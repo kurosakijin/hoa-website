@@ -13,7 +13,7 @@ function AdminLayout() {
 
   function handleLogout() {
     logout();
-    navigate('/admin/login');
+    navigate('/hiyas-admin-access');
   }
 
   return (
@@ -24,7 +24,7 @@ function AdminLayout() {
             <div className="brand-mark brand-mark--dark">
               <span className="brand-mark__icon" />
               <span>
-                <strong>Dashboard X HOA</strong>
+                <strong>Sitio Hiyas HOA</strong>
                 <small>Admin control center</small>
               </span>
             </div>

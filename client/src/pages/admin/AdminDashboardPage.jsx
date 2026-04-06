@@ -36,6 +36,59 @@ function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
+      <section className="surface-card preview-card preview-card--hero p-6">
+        <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="eyebrow">Admin preview</p>
+            <h2 className="mt-2 text-3xl font-semibold text-white">Sitio Hiyas command dashboard</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
+              This protected dashboard is where administrators monitor collections, track outstanding balances, and manage resident records.
+            </p>
+          </div>
+          <span className="status-tag status-tag--violet">Protected admin workspace</span>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="preview-stat">
+            <span>Total billed</span>
+            <strong>{formatCurrency(summary.stats.totalBalance)}</strong>
+          </div>
+          <div className="preview-stat">
+            <span>Total collected</span>
+            <strong>{formatCurrency(summary.stats.totalCollected)}</strong>
+          </div>
+          <div className="preview-stat">
+            <span>Remaining outstanding</span>
+            <strong>{formatCurrency(summary.stats.totalOutstanding)}</strong>
+          </div>
+        </div>
+
+        <div className="mt-6 h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={summary.monthlyCollections}>
+              <defs>
+                <linearGradient id="adminHeroArea" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.65} />
+                  <stop offset="95%" stopColor="#60a5fa" stopOpacity={0.08} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid stroke="rgba(148,163,184,0.15)" vertical={false} />
+              <XAxis dataKey="label" stroke="#94a3b8" tickLine={false} axisLine={false} />
+              <YAxis stroke="#94a3b8" tickLine={false} axisLine={false} />
+              <Tooltip
+                formatter={(value) => formatCurrency(value)}
+                contentStyle={{
+                  background: '#0f172a',
+                  border: '1px solid rgba(148, 163, 184, 0.2)',
+                  borderRadius: '18px',
+                }}
+              />
+              <Area type="monotone" dataKey="amount" stroke="#818cf8" strokeWidth={3} fill="url(#adminHeroArea)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
+
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Total residents" value={summary.stats.totalResidents} hint="Profiles registered in the HOA directory" />
         <MetricCard label="Active lots" value={summary.stats.activeLots} hint="Properties currently assigned to residents" />
@@ -92,13 +145,13 @@ function AdminDashboardPage() {
                   <div>
                     <p className="font-semibold text-white">{payment.residentName}</p>
                     <p className="mt-1 text-sm text-slate-400">
-                      Block {payment.block} · Lot {payment.lotNumber}
+                      Block {payment.block} / Lot {payment.lotNumber}
                     </p>
                   </div>
                   <span className="status-tag">{formatCurrency(payment.amount)}</span>
                 </div>
                 <div className="mt-3 text-sm text-slate-400">
-                  <p>{payment.method} · {payment.type}</p>
+                  <p>{payment.method} / {payment.type}</p>
                   <p>{formatDate(payment.paymentDate)}</p>
                 </div>
               </div>
@@ -121,7 +174,7 @@ function AdminDashboardPage() {
                   <div>
                     <p className="font-semibold text-white">{lot.residentName}</p>
                     <p className="mt-1 text-sm text-slate-400">
-                      Resident ID: {lot.residentCode} · Block {lot.block} · Lot {lot.lotNumber}
+                      Resident ID: {lot.residentCode} / Block {lot.block} / Lot {lot.lotNumber}
                     </p>
                   </div>
                   <span className="status-tag status-tag--danger">{formatCurrency(lot.remainingBalance)}</span>

@@ -1,11 +1,21 @@
 const jwt = require('jsonwebtoken');
 
+function requireEnv(name) {
+  const value = process.env[name];
+
+  if (!value) {
+    throw new Error(`${name} is required for admin authentication.`);
+  }
+
+  return value;
+}
+
 function getAdminConfig() {
   return {
-    username: process.env.ADMIN_USERNAME || process.env.ADMIN_EMAIL || 'admin',
-    password: process.env.ADMIN_PASSWORD || 'Admin123!',
+    username: requireEnv('ADMIN_USERNAME'),
+    password: requireEnv('ADMIN_PASSWORD'),
     name: process.env.ADMIN_NAME || 'Homeowners Admin',
-    secret: process.env.JWT_SECRET || 'hoa-development-secret',
+    secret: requireEnv('JWT_SECRET'),
   };
 }
 

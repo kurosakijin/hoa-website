@@ -13,7 +13,7 @@ function Layout() {
       <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-6 lg:flex-row lg:gap-6 lg:px-6">
         <aside className="glass-panel mb-6 w-full shrink-0 overflow-hidden lg:mb-0 lg:w-72">
           <div className="border-b border-white/10 px-6 py-6">
-            <p className="text-xs uppercase tracking-[0.35em] text-emerald-300/80">Greenfield Estates</p>
+            <p className="text-xs uppercase tracking-[0.35em] text-emerald-300/80">Sitio Hiyas</p>
             <h1 className="mt-3 font-display text-3xl text-white">Homeowners Portal</h1>
             <p className="mt-3 text-sm text-stone-300">
               Manage residents, monitor collections, and operate the HOA from one dashboard.

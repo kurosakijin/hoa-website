@@ -16,7 +16,7 @@ function ProtectedRoute() {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/admin/login" replace state={{ from: location }} />;
+    return <Navigate to="/hiyas-admin-access" replace state={{ from: location }} />;
   }
 
   return <Outlet />;

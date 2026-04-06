@@ -3,7 +3,6 @@ import { NavLink } from 'react-router-dom';
 const publicNavItems = [
   { to: '/', label: 'Home', end: true },
   { to: '/find-my-resident-info', label: 'Find My Resident Info' },
-  { to: '/admin/login', label: 'Admin Login' },
 ];
 
 function PublicHeader() {
@@ -13,7 +12,7 @@ function PublicHeader() {
         <NavLink to="/" className="brand-mark">
           <span className="brand-mark__icon" />
           <span>
-            <strong>Greenfield Estates</strong>
+            <strong>Sitio Hiyas</strong>
             <small>Homeowners Association</small>
           </span>
         </NavLink>
@@ -32,9 +31,8 @@ function PublicHeader() {
             </NavLink>
           ))}
         </nav>
-
-        <NavLink to="/admin/login" className="action-button action-button--secondary">
-          Admin Portal
+        <NavLink to="/find-my-resident-info" className="action-button action-button--secondary">
+          Resident Lookup
         </NavLink>
       </div>
     </header>

@@ -30,9 +30,15 @@ const featureCards = [
     text: 'See total balance, remaining balance, and exact-date payment history for each homeowner property.',
   },
   {
-    title: 'Admin workflows built for daily HOA work',
-    text: 'Handle edits, transfers, removals, and new collections from a dashboard designed around association operations.',
+    title: 'Resident-friendly information access',
+    text: 'Residents can search their own records, confirm assigned lots, and review exact-date payment history from a dedicated lookup page.',
   },
+];
+
+const residentServices = [
+  { label: 'Resident info search', value: 'Name, block, lot, or ID' },
+  { label: 'Payment visibility', value: 'Exact-date lot history' },
+  { label: 'Property support', value: 'Single or multi-lot records' },
 ];
 
 function LandingPage() {
@@ -40,20 +46,20 @@ function LandingPage() {
     <main className="pb-20">
       <section className="mx-auto grid max-w-7xl gap-8 px-4 pt-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-6 lg:pt-10">
         <div className="hero-copy surface-card p-8 lg:p-10">
-          <p className="eyebrow">Modern HOA platform</p>
+          <p className="eyebrow">Sitio Hiyas community portal</p>
           <h1 className="mt-4 max-w-2xl text-4xl font-semibold tracking-tight text-white lg:text-6xl">
-            A homeowners association website built for residents, dues, and day-to-day administration.
+            A resident-focused homepage for Sitio Hiyas homeowners and lot owners.
           </h1>
           <p className="mt-6 max-w-xl text-base leading-7 text-slate-300">
-            Greenfield Estates brings resident search, payment visibility, and an admin-only control center into one polished portal. Public visitors can explore the community, while administrators manage records and collections securely.
+            Sitio Hiyas brings resident search, payment visibility, and clear access to homeowner information into one polished portal. This homepage is intended for residents and public viewers who need to explore the community and verify records.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
             <Link to="/find-my-resident-info" className="action-button action-button--primary">
               Find My Resident Info
             </Link>
-            <Link to="/admin/login" className="action-button action-button--secondary">
-              Admin Login
+            <Link to="/find-my-resident-info" className="action-button action-button--secondary">
+              View Resident Records
             </Link>
           </div>
 
@@ -67,8 +73,8 @@ function LandingPage() {
               <span>Track balances and exact-date histories per property.</span>
             </div>
             <div className="info-chip">
-              <strong>Secure admin area</strong>
-              <span>Protected dashboard for records and collections.</span>
+              <strong>Multi-lot resident view</strong>
+              <span>Residents with two or more lots are shown with card-based property records.</span>
             </div>
           </div>
         </div>
@@ -77,25 +83,19 @@ function LandingPage() {
           <div className="surface-card preview-card preview-card--hero p-5">
             <div className="mb-5 flex items-center justify-between">
               <div>
-                <p className="eyebrow">Admin preview</p>
-                <h2 className="mt-2 text-2xl font-semibold text-white">SaaS-style HOA dashboard</h2>
+                <p className="eyebrow">Resident services</p>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Community and resident information at a glance</h2>
               </div>
-              <span className="status-tag">Live operations</span>
+              <span className="status-tag">Resident access</span>
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
-              <div className="preview-stat">
-                <span>Total residents</span>
-                <strong>247</strong>
-              </div>
-              <div className="preview-stat">
-                <span>Collections posted</span>
-                <strong>PHP 189K</strong>
-              </div>
-              <div className="preview-stat">
-                <span>Active lots</span>
-                <strong>231</strong>
-              </div>
+              {residentServices.map((service) => (
+                <div key={service.label} className="preview-stat">
+                  <span>{service.label}</span>
+                  <strong>{service.value}</strong>
+                </div>
+              ))}
             </div>
 
             <div className="mt-6 h-72">
@@ -132,8 +132,8 @@ function LandingPage() {
           <div className="mt-4 surface-card p-5">
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <p className="eyebrow">Resident growth</p>
-                <h3 className="mt-2 text-xl font-semibold text-white">Community engagement snapshot</h3>
+                <p className="eyebrow">Community growth</p>
+                <h3 className="mt-2 text-xl font-semibold text-white">Resident participation snapshot</h3>
               </div>
               <span className="status-tag status-tag--violet">+18 this quarter</span>
             </div>

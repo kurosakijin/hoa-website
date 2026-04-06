@@ -15,8 +15,9 @@ function App() {
       <Route path="/" element={<PublicLayout />}>
         <Route index element={<LandingPage />} />
         <Route path="find-my-resident-info" element={<ResidentLookupPage />} />
-        <Route path="admin/login" element={<AdminLoginPage />} />
       </Route>
+
+      <Route path="/hiyas-admin-access" element={<AdminLoginPage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route path="/admin" element={<AdminLayout />}>
