@@ -21,10 +21,10 @@ export const fallbackDashboard = {
 };
 
 export const fallbackResidents = [
-  { id: 'r1', fullName: 'Maria Santos', lotNumber: 'A-14', status: 'Owner', contactNumber: '0917-555-1024', balance: 0 },
-  { id: 'r2', fullName: 'Daniel Cruz', lotNumber: 'C-07', status: 'Tenant', contactNumber: '0917-555-4431', balance: 3500 },
-  { id: 'r3', fullName: 'Ana Lim', lotNumber: 'B-11', status: 'Owner', contactNumber: '0917-555-8821', balance: 0 },
-  { id: 'r4', fullName: 'Paolo Reyes', lotNumber: 'D-03', status: 'Owner', contactNumber: '0917-555-6642', balance: 1750 },
+  { id: 'r1', fullName: 'Maria Santos', lotNumber: 'A-14', status: 'Owner', contactNumber: '09175551024', balance: 0 },
+  { id: 'r2', fullName: 'Daniel Cruz', lotNumber: 'C-07', status: 'Tenant', contactNumber: '09175554431', balance: 3500 },
+  { id: 'r3', fullName: 'Ana Lim', lotNumber: 'B-11', status: 'Owner', contactNumber: '09175558821', balance: 0 },
+  { id: 'r4', fullName: 'Paolo Reyes', lotNumber: 'D-03', status: 'Owner', contactNumber: '09175556642', balance: 1750 },
 ];
 
 export const fallbackPayments = [

@@ -97,8 +97,10 @@ function PaymentLotModal({
               <div className="mt-4 space-y-2 text-sm text-slate-300">
                 <p>Contact: {detail.contactNumber}</p>
                 <p>Address: {detail.address}</p>
-                <p>Block {detail.lot.block} · Lot {detail.lot.lotNumber}</p>
+                <p>Block {detail.lot.block} / Lot {detail.lot.lotNumber}</p>
                 <p>{detail.lot.squareMeters} sqm assigned</p>
+                <p>Price per sqm: {formatCurrency(detail.lot.pricePerSquareMeter)}</p>
+                <p>Billing basis: {detail.lot.isSpotCash ? 'Cash' : 'Installment with 5-year interest'}</p>
                 <p>Total balance: {formatCurrency(detail.lot.totalBalance)}</p>
                 <p>Remaining balance: {formatCurrency(detail.lot.remainingBalance)}</p>
               </div>

@@ -64,7 +64,11 @@ function AdminResidentsPage() {
   }
 
   async function handleDelete(residentId) {
-    if (!window.confirm('Remove this resident and all related payment history?')) {
+    if (
+      !window.confirm(
+        'Forfeit this resident? This will delete all payment history tied to the resident and their assigned block and lot records.'
+      )
+    ) {
       return;
     }
 
@@ -84,7 +88,7 @@ function AdminResidentsPage() {
             <p className="eyebrow">Resident management</p>
             <h2 className="mt-2 text-2xl font-semibold text-white">Admin resident directory</h2>
             <p className="mt-2 text-sm text-slate-400">
-              Residents are listed from last name to first name, with balances and modal actions for edit, transfer, and removal.
+              Residents are listed from last name to first name, with balances and modal actions for edit, transfer, and forfeiture.
             </p>
           </div>
 
@@ -136,7 +140,7 @@ function AdminResidentsPage() {
                         Transfer
                       </button>
                       <button type="button" className="table-action table-action--danger" onClick={() => handleDelete(resident.id)}>
-                        Remove
+                        Forfeit
                       </button>
                     </div>
                   </td>
@@ -150,6 +154,7 @@ function AdminResidentsPage() {
       <ResidentFormModal
         isOpen={isCreateOpen}
         resident={null}
+        residents={residents}
         onClose={() => setIsCreateOpen(false)}
         onSubmit={handleCreate}
       />
@@ -157,6 +162,7 @@ function AdminResidentsPage() {
       <ResidentFormModal
         isOpen={Boolean(editingResident)}
         resident={editingResident}
+        residents={residents}
         onClose={() => setEditingResident(null)}
         onSubmit={handleUpdate}
       />

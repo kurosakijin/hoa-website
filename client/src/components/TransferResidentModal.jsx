@@ -1,9 +1,16 @@
 import { useEffect, useState } from 'react';
 import Modal from './Modal';
+import { sanitizeContactNumber } from '../utils/contactNumber';
+
+function getTransferableLots(resident) {
+  return resident?.lots?.filter((lot) => lot.isActive !== false) || [];
+}
 
 function createInitialState(resident) {
+  const transferableLots = getTransferableLots(resident);
+
   return {
-    lotId: resident?.lots?.[0]?.id || '',
+    lotId: transferableLots[0]?.id || '',
     firstName: '',
     lastName: '',
     contactNumber: '',
@@ -16,6 +23,7 @@ function TransferResidentModal({ isOpen, resident, onClose, onSubmit }) {
   const [form, setForm] = useState(createInitialState(resident));
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
+  const transferableLots = getTransferableLots(resident);
 
   useEffect(() => {
     setForm(createInitialState(resident));
@@ -46,15 +54,24 @@ function TransferResidentModal({ isOpen, resident, onClose, onSubmit }) {
     >
       <form className="space-y-4" onSubmit={handleSubmit}>
         <label className="field-shell">
-          <span>Lot to transfer</span>
-          <select value={form.lotId} onChange={(event) => setForm((current) => ({ ...current, lotId: event.target.value }))}>
-            {resident?.lots?.map((lot) => (
+          <span>Assigned lot to transfer</span>
+          <select
+            value={form.lotId}
+            onChange={(event) => setForm((current) => ({ ...current, lotId: event.target.value }))}
+            disabled={!transferableLots.length}
+          >
+            {!transferableLots.length ? <option value="">No active lots available</option> : null}
+            {transferableLots.map((lot) => (
               <option key={lot.id} value={lot.id}>
-                Block {lot.block} · Lot {lot.lotNumber}
+                Block {lot.block} / Lot {lot.lotNumber}
               </option>
             ))}
           </select>
         </label>
+
+        <p className="text-sm text-slate-400">
+          Transfer moves one of this resident&apos;s current assigned lots to a new resident profile. Vacant block and lot selection is handled in the add or edit resident form.
+        </p>
 
         <div className="grid gap-4 md:grid-cols-2">
           <label className="field-shell">
@@ -67,7 +84,18 @@ function TransferResidentModal({ isOpen, resident, onClose, onSubmit }) {
           </label>
           <label className="field-shell">
             <span>Contact number</span>
-            <input value={form.contactNumber} onChange={(event) => setForm((current) => ({ ...current, contactNumber: event.target.value }))} required />
+            <input
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={form.contactNumber}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  contactNumber: sanitizeContactNumber(event.target.value),
+                }))
+              }
+              required
+            />
           </label>
           <label className="field-shell">
             <span>Resident type</span>
