@@ -8,14 +8,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { Link } from 'react-router-dom';
+import { Link, useOutletContext } from 'react-router-dom';
 import Seo from '../components/Seo';
-import {
-  getPublicOccupancySummary,
-  getResidentChatThread,
-  sendResidentChatMessage,
-} from '../services/api';
-import { formatDate } from '../utils/format';
+import { getPublicOccupancySummary } from '../services/api';
 
 const featureCards = [
   {
@@ -44,19 +39,8 @@ const lookupPreparation = [
   'Uploaded payment receipts and posted payment dates will appear directly in your resident result.',
 ];
 
-const RESIDENT_CHAT_STORAGE_KEY = 'hoa-resident-chat-id';
-
-function getResidentInitials(name) {
-  return String(name || 'SH')
-    .split(/\s+/)
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-}
-
 function ResidentPage() {
+  const { openResidentChatWidget } = useOutletContext();
   const [occupancySummary, setOccupancySummary] = useState({
     occupiedResidents: 0,
     occupiedLots: 0,
@@ -65,45 +49,6 @@ function ResidentPage() {
   });
   const [isLoadingSummary, setIsLoadingSummary] = useState(true);
   const [occupancyError, setOccupancyError] = useState('');
-  const [residentChatId, setResidentChatId] = useState('');
-  const [connectedResidentId, setConnectedResidentId] = useState('');
-  const [residentChat, setResidentChat] = useState(null);
-  const [chatMessage, setChatMessage] = useState('');
-  const [chatError, setChatError] = useState('');
-  const [isChatLoading, setIsChatLoading] = useState(false);
-  const [isChatSending, setIsChatSending] = useState(false);
-
-  async function loadResidentChat(residentId, options = {}) {
-    const { silent = false } = options;
-
-    if (!residentId) {
-      return;
-    }
-
-    if (!silent) {
-      setIsChatLoading(true);
-    }
-
-    try {
-      const data = await getResidentChatThread(residentId);
-      setResidentChat(data);
-      setResidentChatId(data.resident.residentCode);
-      setConnectedResidentId(data.resident.residentCode);
-      setChatError('');
-      window.localStorage.setItem(RESIDENT_CHAT_STORAGE_KEY, data.resident.residentCode);
-    } catch (error) {
-      if (!silent) {
-        setResidentChat(null);
-        setConnectedResidentId('');
-      }
-
-      setChatError(error.message);
-    } finally {
-      if (!silent) {
-        setIsChatLoading(false);
-      }
-    }
-  }
 
   useEffect(() => {
     let isMounted = true;
@@ -138,59 +83,6 @@ function ResidentPage() {
     };
   }, []);
 
-  useEffect(() => {
-    const savedResidentId = window.localStorage.getItem(RESIDENT_CHAT_STORAGE_KEY);
-
-    if (!savedResidentId) {
-      return;
-    }
-
-    setResidentChatId(savedResidentId);
-    loadResidentChat(savedResidentId);
-  }, []);
-
-  useEffect(() => {
-    if (!connectedResidentId) {
-      return undefined;
-    }
-
-    const intervalId = window.setInterval(() => {
-      loadResidentChat(connectedResidentId, { silent: true });
-    }, 2500);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [connectedResidentId]);
-
-  async function handleChatConnect(event) {
-    event.preventDefault();
-    await loadResidentChat(residentChatId);
-  }
-
-  async function handleChatSend(event) {
-    event.preventDefault();
-
-    if (!connectedResidentId || !chatMessage.trim()) {
-      return;
-    }
-
-    try {
-      setIsChatSending(true);
-      const data = await sendResidentChatMessage({
-        residentId: connectedResidentId,
-        message: chatMessage,
-      });
-      setResidentChat(data);
-      setChatMessage('');
-      setChatError('');
-    } catch (error) {
-      setChatError(error.message);
-    } finally {
-      setIsChatSending(false);
-    }
-  }
-
   return (
     <main className="pb-20">
       <Seo
@@ -222,9 +114,9 @@ function ResidentPage() {
             <Link to="/find-my-resident-info" className="action-button action-button--primary">
               Find My Resident Info
             </Link>
-            <a href="#resident-chat" className="action-button action-button--secondary">
+            <button type="button" className="action-button action-button--secondary" onClick={openResidentChatWidget}>
               Chat with Admin
-            </a>
+            </button>
           </div>
 
           <div className="mt-10 grid gap-4 md:grid-cols-3">
@@ -353,155 +245,25 @@ function ResidentPage() {
         </div>
       </section>
 
-      <section className="mx-auto mt-8 max-w-7xl px-4 lg:px-6">
-        <div id="resident-chat" className="resident-chat-shell">
-          <article className="surface-card p-6">
-            <p className="eyebrow">Resident support chat</p>
-            <h2 className="mt-3 text-3xl font-semibold text-white">Message the admin with your resident ID</h2>
-            <p className="mt-4 text-sm leading-7 text-slate-300">
-              Enter the resident ID created by the admin team to open your chat. If the admin is offline, you can still leave a message here and it will wait for the admin when they return.
+      <section className="mx-auto mt-8 max-w-5xl px-4 lg:px-6">
+        <article className="surface-card resident-chat-entry p-6 lg:p-8">
+          <div>
+            <p className="eyebrow">Resident support</p>
+            <h2 className="mt-3 text-3xl font-semibold text-white">Need to chat with the admin team?</h2>
+            <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300">
+              Open the Messenger-style chat popup to ask about your lot assignment, payment history, or resident record. The popup stays with you while you move around the public pages until you close it yourself.
             </p>
+          </div>
 
-            <form className="mt-6 space-y-4" onSubmit={handleChatConnect}>
-              <label className="field-shell">
-                <span>Resident ID</span>
-                <input
-                  value={residentChatId}
-                  onChange={(event) => setResidentChatId(event.target.value.toUpperCase())}
-                  placeholder="Example: HOA-A12F90"
-                />
-              </label>
-
-              <div className="flex flex-wrap gap-3">
-                <button type="submit" className="action-button action-button--primary" disabled={isChatLoading || !residentChatId.trim()}>
-                  {isChatLoading ? 'Opening chat...' : 'Open resident chat'}
-                </button>
-                <Link to="/find-my-resident-info" className="action-button action-button--secondary">
-                  Find my resident ID
-                </Link>
-              </div>
-            </form>
-
-            <div className="chat-presence-card mt-6">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className={`status-tag ${residentChat?.adminPresence?.isOnline ? '' : 'status-tag--danger'}`}>
-                  {residentChat?.adminPresence?.isOnline ? 'Admin online' : 'Admin offline'}
-                </span>
-                {residentChat?.adminPresence?.lastSeenAt ? (
-                  <span className="text-sm text-slate-400">
-                    Last active {formatDate(residentChat.adminPresence.lastSeenAt)}
-                  </span>
-                ) : (
-                  <span className="text-sm text-slate-400">Status will appear once your resident ID is connected.</span>
-                )}
-              </div>
-
-              {residentChat?.resident ? (
-                <div className="chat-presence-card__resident">
-                  <div className="chat-thread-list__avatar">
-                    {residentChat.resident.profileImageUrl ? (
-                      <img
-                        src={residentChat.resident.profileImageUrl}
-                        alt={residentChat.resident.fullName}
-                        className="chat-thread-list__avatar-image"
-                      />
-                    ) : (
-                      <span>{getResidentInitials(residentChat.resident.fullName)}</span>
-                    )}
-                  </div>
-
-                  <div className="min-w-0">
-                    <p className="chat-panel__name">{residentChat.resident.fullName}</p>
-                    <p className="chat-panel__sub">{residentChat.resident.residentCode}</p>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-
-            {chatError ? (
-              <p className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                {chatError}
-              </p>
-            ) : null}
-          </article>
-
-          <article className="surface-card chat-panel">
-            <div className="chat-panel__header">
-              <div>
-                <p className="eyebrow">Resident conversation</p>
-                <h3 className="mt-2 text-xl font-semibold text-white">Chat with the admin team</h3>
-              </div>
-              <span className="status-tag status-tag--violet">
-                {residentChat?.thread?.messages?.length || 0} message{residentChat?.thread?.messages?.length === 1 ? '' : 's'}
-              </span>
-            </div>
-
-            {residentChat?.thread?.isAdminTyping ? (
-              <div className="chat-typing-indicator">
-                <span className="chat-typing-indicator__dot" />
-                <span>Admin is typing...</span>
-              </div>
-            ) : null}
-
-            <div className="chat-messages">
-              {residentChat?.thread?.messages?.length ? (
-                residentChat.thread.messages.map((chatItem) => (
-                  <div
-                    key={chatItem.id}
-                    className={`chat-message ${chatItem.senderRole === 'resident' ? 'chat-message--self' : ''}`}
-                  >
-                    <div className="chat-message__bubble">
-                      <p className="chat-message__sender">{chatItem.senderName}</p>
-                      <p className="chat-message__body">{chatItem.body}</p>
-                      <p className="chat-message__meta">{formatDate(chatItem.createdAt)}</p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="chat-empty-state chat-empty-state--panel">
-                  <p className="text-base font-semibold text-white">No messages yet.</p>
-                  <p className="mt-2 text-sm text-slate-400">
-                    Open your resident chat with your resident ID first. You can leave a message here even when the admin is offline.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <form className="chat-composer" onSubmit={handleChatSend}>
-              <label className="field-shell">
-                <span>Your message</span>
-                <textarea
-                  rows="3"
-                  value={chatMessage}
-                  onChange={(event) => setChatMessage(event.target.value)}
-                  placeholder={
-                    residentChat?.adminPresence?.isOnline
-                      ? 'Type your message to the admin...'
-                      : 'Admin is offline right now. Leave a message and the admin will see it when they return.'
-                  }
-                  disabled={!residentChat?.resident}
-                />
-              </label>
-
-              <div className="chat-composer__actions">
-                <span className="text-sm text-slate-400">
-                  Chat uses your resident ID so the admin can identify your record quickly, even if you leave a message while the admin is offline.
-                </span>
-                <button
-                  type="submit"
-                  className="action-button action-button--primary"
-                  disabled={
-                    isChatSending ||
-                    !residentChat?.resident ||
-                    !chatMessage.trim()
-                  }
-                >
-                  {isChatSending ? 'Sending...' : residentChat?.adminPresence?.isOnline ? 'Send message' : 'Leave message'}
-                </button>
-              </div>
-            </form>
-          </article>
-        </div>
+          <div className="resident-chat-entry__actions">
+            <button type="button" className="action-button action-button--primary" onClick={openResidentChatWidget}>
+              Open Chat Popup
+            </button>
+            <Link to="/find-my-resident-info" className="action-button action-button--secondary">
+              Find My Resident Info
+            </Link>
+          </div>
+        </article>
       </section>
     </main>
   );

@@ -34,6 +34,7 @@ function AdminChatPage() {
   const [error, setError] = useState('');
   const typingTimeoutRef = useRef(null);
   const selectedThreadIdRef = useRef('');
+  const messagesEndRef = useRef(null);
 
   async function loadThreads({ silent = false } = {}) {
     if (!silent) {
@@ -175,6 +176,17 @@ function AdminChatPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!messagesEndRef.current || !selectedThreadId) {
+      return;
+    }
+
+    messagesEndRef.current.scrollIntoView({
+      behavior: 'smooth',
+      block: 'end',
+    });
+  }, [selectedThread?.messages?.length, selectedThread?.threadUpdatedAt, selectedThreadId]);
+
   async function handleSendMessage(event) {
     event.preventDefault();
 
@@ -230,7 +242,7 @@ function AdminChatPage() {
 
   return (
     <div className="space-y-6">
-      <section className="surface-card p-5">
+      <section className="surface-card admin-chat-messenger">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="eyebrow">Resident chat</p>
@@ -252,14 +264,21 @@ function AdminChatPage() {
 
         {error ? <p className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
 
-        <div className="admin-chat-shell mt-6">
-          <aside className="chat-thread-list">
-            <div className="chat-thread-list__header">
-              <h3 className="text-lg font-semibold text-white">Open resident threads</h3>
-              <p className="text-sm text-slate-400">Unread resident messages are highlighted here and also reflected in the admin sidebar badge.</p>
+        <div className="admin-chat-messenger__shell">
+          <aside className="admin-chat-messenger__sidebar">
+            <div className="admin-chat-messenger__sidebar-header">
+              <div className="admin-chat-messenger__sidebar-title">
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Messages</h3>
+                  <p className="text-sm text-slate-400">Unread resident messages are highlighted here and also reflected in the admin sidebar badge.</p>
+                </div>
+                <span className="status-tag status-tag--violet">
+                  {threads.length} thread{threads.length === 1 ? '' : 's'}
+                </span>
+              </div>
             </div>
 
-            <div className="chat-thread-list__items">
+            <div className="admin-chat-messenger__thread-list">
               {isThreadsLoading ? (
                 <div className="chat-empty-state">
                   <p className="text-sm text-slate-300">Loading resident conversations...</p>
@@ -279,16 +298,16 @@ function AdminChatPage() {
                 <button
                   key={thread.id}
                   type="button"
-                  className={`chat-thread-list__item ${thread.id === selectedThreadId ? 'chat-thread-list__item--active' : ''}`}
+                  className={`messenger-thread ${thread.id === selectedThreadId ? 'messenger-thread--active' : ''}`}
                   onClick={() => setSelectedThreadId(thread.id)}
                 >
-                  <div className="chat-thread-list__item-top">
-                    <div className="chat-thread-list__avatar">
+                  <div className="messenger-thread__top">
+                    <div className="messenger-thread__avatar">
                       {thread.residentProfileImageUrl ? (
                         <img
                           src={thread.residentProfileImageUrl}
                           alt={thread.residentName}
-                          className="chat-thread-list__avatar-image"
+                          className="messenger-thread__avatar-image"
                         />
                       ) : (
                         <span>{getResidentInitials(thread.residentName)}</span>
@@ -296,17 +315,17 @@ function AdminChatPage() {
                     </div>
 
                     <div className="min-w-0">
-                      <p className="chat-thread-list__name">{thread.residentName}</p>
-                      <p className="chat-thread-list__sub">{thread.residentCode}</p>
+                      <p className="messenger-thread__name">{thread.residentName}</p>
+                      <p className="messenger-thread__sub">{thread.residentCode}</p>
                     </div>
                   </div>
 
-                  <p className="chat-thread-list__preview">{thread.lastMessageText || 'No messages yet.'}</p>
+                  <p className="messenger-thread__preview">{thread.lastMessageText || 'No messages yet.'}</p>
 
-                  <div className="chat-thread-list__item-meta">
+                  <div className="messenger-thread__meta">
                     <span>{thread.lastMessageAt ? formatDate(thread.lastMessageAt) : 'Waiting for first message'}</span>
                     {thread.unreadForAdmin ? (
-                      <strong className="chat-thread-list__badge">{thread.unreadForAdmin}</strong>
+                      <strong className="messenger-thread__badge">{thread.unreadForAdmin}</strong>
                     ) : null}
                   </div>
                 </button>
@@ -314,17 +333,17 @@ function AdminChatPage() {
             </div>
           </aside>
 
-          <div className="chat-panel surface-card">
+          <div className="admin-chat-messenger__conversation">
             {selectedThreadSummary ? (
               <>
-                <div className="chat-panel__header">
-                  <div className="chat-panel__identity">
-                    <div className="chat-thread-list__avatar">
+                <div className="admin-chat-messenger__conversation-header">
+                  <div className="admin-chat-messenger__identity">
+                    <div className="messenger-thread__avatar messenger-thread__avatar--large">
                       {selectedThreadSummary.residentProfileImageUrl ? (
                         <img
                           src={selectedThreadSummary.residentProfileImageUrl}
                           alt={selectedThreadSummary.residentName}
-                          className="chat-thread-list__avatar-image"
+                          className="messenger-thread__avatar-image"
                         />
                       ) : (
                         <span>{getResidentInitials(selectedThreadSummary.residentName)}</span>
@@ -332,12 +351,12 @@ function AdminChatPage() {
                     </div>
 
                     <div className="min-w-0">
-                      <p className="chat-panel__name">{selectedThreadSummary.residentName}</p>
-                      <p className="chat-panel__sub">{selectedThreadSummary.residentCode}</p>
+                      <p className="admin-chat-messenger__name">{selectedThreadSummary.residentName}</p>
+                      <p className="admin-chat-messenger__sub">{selectedThreadSummary.residentCode}</p>
                     </div>
                   </div>
 
-                  <div className="chat-panel__header-actions">
+                  <div className="admin-chat-messenger__header-actions">
                     <span className="status-tag status-tag--violet">
                       {selectedThread?.messages?.length || 0} message{selectedThread?.messages?.length === 1 ? '' : 's'}
                     </span>
@@ -352,7 +371,7 @@ function AdminChatPage() {
                   </div>
                 </div>
 
-                <div className="chat-messages">
+                <div className="admin-chat-messenger__messages">
                   {isThreadLoading ? (
                     <div className="chat-empty-state">
                       <p className="text-sm text-slate-300">Loading conversation...</p>
@@ -374,6 +393,8 @@ function AdminChatPage() {
                     ))
                   ) : null}
 
+                  <div ref={messagesEndRef} />
+
                   {!isThreadLoading && !selectedThread?.messages?.length ? (
                     <div className="chat-empty-state">
                       <p className="text-sm font-semibold text-white">No messages in this thread yet.</p>
@@ -384,7 +405,7 @@ function AdminChatPage() {
                   ) : null}
                 </div>
 
-                <form className="chat-composer" onSubmit={handleSendMessage}>
+                <form className="admin-chat-messenger__composer" onSubmit={handleSendMessage}>
                   <label className="field-shell">
                     <span>Reply to resident</span>
                     <textarea
@@ -394,7 +415,7 @@ function AdminChatPage() {
                       placeholder="Type your reply to the resident..."
                     />
                   </label>
-                  <div className="chat-composer__actions">
+                  <div className="admin-chat-messenger__composer-actions">
                     <span className="text-sm text-slate-400">
                       Residents will see your reply on their side almost immediately, and they can also see when you are typing.
                     </span>
