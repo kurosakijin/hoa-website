@@ -31,6 +31,7 @@ function buildSitemapXml(siteUrl) {
 
   const routes = [
     { path: '/', changefreq: 'weekly', priority: '1.0' },
+    { path: '/resident-page', changefreq: 'weekly', priority: '0.9' },
     { path: '/find-my-resident-info', changefreq: 'weekly', priority: '0.8' },
   ];
 

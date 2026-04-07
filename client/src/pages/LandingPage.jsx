@@ -1,92 +1,45 @@
-import { useEffect, useState } from 'react';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import { Link } from 'react-router-dom';
 import Seo from '../components/Seo';
-import { getPublicOccupancySummary } from '../services/api';
+import ThemeToggleButton from '../components/ThemeToggleButton';
 
-const featureCards = [
+const publicFeatureCards = [
   {
-    title: 'Resident records that stay organized',
-    text: 'Track contact details, addresses, lot assignments, and resident IDs with a single searchable directory.',
+    title: 'Resident services',
+    text: 'Send residents to a dedicated resident page instead of mixing property tools into the public homepage.',
   },
   {
-    title: 'Payment visibility for every assigned lot',
-    text: 'See total balance, remaining balance, and exact-date payment history for each homeowner property.',
+    title: 'Community information',
+    text: 'Present Sitio Hiyas as a real subdivision homepage with public-facing copy, overview sections, and welcome details.',
   },
   {
-    title: 'Resident-friendly information access',
-    text: 'Residents can search their own records, confirm assigned lots, and review exact-date payment history from a dedicated lookup page.',
+    title: 'Association guidance',
+    text: 'Keep the resident record search, occupancy visuals, and payment visibility on a separate page built for homeowners.',
   },
 ];
 
-const residentServices = [
-  { label: 'Resident info search', value: 'Name, block, lot, or ID' },
-  { label: 'Payment visibility', value: 'Exact-date lot history' },
-  { label: 'Property support', value: 'Single or multi-lot records' },
+const publicFacts = [
+  { label: 'Public-facing layout', value: 'Subdivision welcome page with a clear resident entry point' },
+  { label: 'Resident access', value: 'Separate resident page for lookup, balances, and records' },
+  { label: 'Association flow', value: 'Public homepage first, resident tools second' },
+  { label: 'Community focus', value: 'Overview copy, homeowner guidance, and neighborhood identity' },
 ];
 
-const lookupPreparation = [
-  'Prepare your resident ID if you already received one from the admin team.',
-  'If you do not have your ID yet, use your last name, first name, block, and lot number.',
-  'Uploaded payment receipts and posted payment dates will appear directly in your resident result.',
-];
+const heroBackdropStyle = {
+  backgroundImage: [
+    'linear-gradient(180deg, rgba(22, 34, 13, 0.18), rgba(18, 24, 12, 0.7))',
+    'radial-gradient(circle at 14% 18%, rgba(126, 162, 89, 0.34), transparent 24%)',
+    'radial-gradient(circle at 26% 76%, rgba(87, 110, 55, 0.22), transparent 24%)',
+    'linear-gradient(118deg, rgba(88, 111, 52, 0.96) 0%, rgba(68, 55, 38, 0.94) 34%, rgba(60, 74, 48, 0.94) 66%, rgba(28, 36, 24, 0.98) 100%)',
+  ].join(', '),
+};
 
 function LandingPage() {
-  const [occupancySummary, setOccupancySummary] = useState({
-    occupiedResidents: 0,
-    occupiedLots: 0,
-    occupiedBlocksCount: 0,
-    occupiedBlocks: [],
-  });
-  const [isLoadingSummary, setIsLoadingSummary] = useState(true);
-  const [occupancyError, setOccupancyError] = useState('');
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadOccupancySummary() {
-      try {
-        const summary = await getPublicOccupancySummary();
-
-        if (!isMounted) {
-          return;
-        }
-
-        setOccupancySummary(summary);
-        setOccupancyError('');
-      } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-
-        setOccupancyError(error.message);
-      } finally {
-        if (isMounted) {
-          setIsLoadingSummary(false);
-        }
-      }
-    }
-
-    loadOccupancySummary();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   return (
     <main className="pb-20">
       <Seo
         title="Home"
-        description="Official public page for Sitio Hiyas Homeowners Association with resident lookup access, occupancy visibility, and community information."
+        description="Official public homepage for Sitio Hiyas Homeowners Association with community information and a direct path into the resident page."
         path="/"
         structuredData={{
           '@context': 'https://schema.org',
@@ -96,7 +49,7 @@ function LandingPage() {
               name: 'Sitio Hiyas Homeowners Association',
               url: import.meta.env.VITE_SITE_URL || undefined,
               description:
-                'Public resident portal for Sitio Hiyas Homeowners Association with resident lookup, occupancy visibility, and payment history review.',
+                'Public-facing homepage for Sitio Hiyas Homeowners Association with community information and a dedicated resident page.',
             },
             {
               '@type': 'WebSite',
@@ -106,153 +59,139 @@ function LandingPage() {
           ],
         }}
       />
-      <section className="mx-auto grid max-w-7xl gap-8 px-4 pt-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-6 lg:pt-10">
-        <div className="hero-copy surface-card p-8 lg:p-10">
-          <p className="eyebrow">Sitio Hiyas community portal</p>
-          <h1 className="mt-4 max-w-2xl text-4xl font-semibold tracking-tight text-white lg:text-6xl">
-            A resident-focused homepage for Sitio Hiyas homeowners and lot owners.
-          </h1>
-          <p className="mt-6 max-w-xl text-base leading-7 text-slate-300">
-            Sitio Hiyas brings resident search, payment visibility, and clear access to homeowner information into one polished portal. This homepage is intended for residents and public viewers who need to explore the community and verify records.
-          </p>
-
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link to="/find-my-resident-info" className="action-button action-button--primary">
-              Find My Resident Info
-            </Link>
-            <Link to="/find-my-resident-info" className="action-button action-button--secondary">
-              View Resident Records
-            </Link>
-          </div>
-
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
-            <div className="info-chip">
-              <strong>Resident lookup</strong>
-              <span>Search by name, block, lot, or resident ID.</span>
-            </div>
-            <div className="info-chip">
-              <strong>Lot-based payments</strong>
-              <span>Track balances and exact-date histories per property.</span>
-            </div>
-            <div className="info-chip">
-              <strong>Multi-lot resident view</strong>
-              <span>Residents with two or more lots are shown with card-based property records.</span>
-            </div>
-          </div>
+      <section id="home" className="relative isolate overflow-hidden border-b border-black/10 bg-[#355f16] text-[#fff8ee]">
+        <div className="absolute inset-0" style={heroBackdropStyle} />
+        <div className="absolute inset-y-0 right-0 hidden w-[36%] border-l border-white/10 opacity-35 lg:block">
+          <div className="h-full w-full bg-[repeating-linear-gradient(90deg,rgba(255,255,255,0.08)_0_4px,transparent_4px_26px)]" />
         </div>
+        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-b from-transparent to-black/30" />
 
-        <div className="dashboard-preview">
-          <div className="surface-card preview-card preview-card--hero p-5">
-            <div className="mb-5 flex items-center justify-between">
+        <div className="relative mx-auto max-w-7xl">
+          <div className="flex items-center justify-between gap-6 px-4 py-4 lg:px-6">
+            <div className="flex items-center gap-4">
+              <span className="grid h-14 w-14 place-items-center rounded-full border border-[#fff8ee]/70 text-lg font-semibold tracking-[0.14em] text-[#fff8ee]">
+                SH
+              </span>
               <div>
-                <p className="eyebrow">Resident services</p>
-                <h2 className="mt-2 text-2xl font-semibold text-white">Community and resident information at a glance</h2>
+                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#fff8ee]/80">Sitio Hiyas</p>
+                <p className="text-base font-semibold text-[#fff8ee]">Homeowners Association</p>
               </div>
-              <span className="status-tag">Resident access</span>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
-              {residentServices.map((service) => (
-                <div key={service.label} className="preview-stat preview-stat--compact-copy">
-                  <span>{service.label}</span>
-                  <strong>{service.value}</strong>
-                </div>
-              ))}
+            <div className="hidden items-center gap-6 text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[#fff8ee]/78 lg:flex">
+              <a href="#home" className="transition hover:text-[#fff8ee]">
+                Home
+              </a>
+              <a href="#community" className="transition hover:text-[#fff8ee]">
+                Community
+              </a>
+              <a href="#about" className="transition hover:text-[#fff8ee]">
+                About
+              </a>
+              <a href="#resident" className="transition hover:text-[#fff8ee]">
+                Resident Page
+              </a>
             </div>
 
-            <div className="mt-6">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="eyebrow">Current occupancy</p>
-                  <h3 className="mt-2 text-xl font-semibold text-white">Occupied resident records by block</h3>
-                </div>
-                <span className="status-tag">
-                  {isLoadingSummary ? 'Loading occupancy...' : `${occupancySummary.occupiedLots} occupied lots`}
-                </span>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="preview-stat">
-                  <span>Occupied residents</span>
-                  <strong>{isLoadingSummary ? '...' : occupancySummary.occupiedResidents}</strong>
-                </div>
-                <div className="preview-stat">
-                  <span>Occupied lots</span>
-                  <strong>{isLoadingSummary ? '...' : occupancySummary.occupiedLots}</strong>
-                </div>
-                <div className="preview-stat">
-                  <span>Blocks with occupancy</span>
-                  <strong>{isLoadingSummary ? '...' : occupancySummary.occupiedBlocksCount}</strong>
-                </div>
-              </div>
-
-              {occupancyError ? (
-                <p className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                  {occupancyError}
-                </p>
-              ) : null}
-
-              {!occupancyError && !isLoadingSummary && occupancySummary.occupiedBlocks.length ? (
-                <div className="mt-5 h-72">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={occupancySummary.occupiedBlocks}>
-                      <CartesianGrid stroke="rgba(44, 62, 80, 0.12)" vertical={false} />
-                      <XAxis dataKey="block" stroke="#768694" tickLine={false} axisLine={false} />
-                      <YAxis allowDecimals={false} stroke="#768694" tickLine={false} axisLine={false} />
-                      <Tooltip
-                        formatter={(value) => [`${value} occupied lots`, 'Occupied lots']}
-                        labelFormatter={(value) => `Block ${value}`}
-                        contentStyle={{
-                          background: '#fbf6ef',
-                          border: '1px solid rgba(44, 62, 80, 0.12)',
-                          borderRadius: '18px',
-                          color: '#2c3e50',
-                        }}
-                      />
-                      <Bar dataKey="occupiedLots" fill="#88b04b" radius={[10, 10, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : null}
-
-              {!occupancyError && !isLoadingSummary && !occupancySummary.occupiedBlocks.length ? (
-                <div className="mt-5 rounded-3xl border border-white/10 bg-slate-950/40 p-5 text-sm text-slate-300">
-                  No occupied resident records are available yet. Once residents and lot assignments are added by the admin team, this chart will reflect the current occupied blocks.
-                </div>
-              ) : null}
+            <div className="flex items-center gap-3">
+              <ThemeToggleButton compact />
+              <Link
+                to="/resident-page"
+                className="inline-flex min-h-[2.85rem] items-center rounded-sm bg-[#c79d47] px-4 py-3 text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-[#fff8ee] transition hover:-translate-y-0.5 hover:bg-[#d1aa5a]"
+              >
+                Resident Page
+              </Link>
             </div>
           </div>
 
-          <div className="mt-4 surface-card p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <p className="eyebrow">Before you search</p>
-                <h3 className="mt-2 text-xl font-semibold text-white">Resident lookup preparation</h3>
-              </div>
-              <span className="status-tag status-tag--violet">Resident guide</span>
-            </div>
+          <div className="grid min-h-[31rem] place-items-center px-4 py-16 text-center lg:px-6">
+            <div className="max-w-3xl rounded-[2rem] border border-white/12 bg-black/20 px-6 py-10 shadow-[0_28px_70px_rgba(0,0,0,0.28)] backdrop-blur-sm sm:px-10">
+              <p className="text-[0.72rem] font-semibold uppercase tracking-[0.32em] text-[#f1d9a0]">
+                Sitio Hiyas community welcome
+              </p>
+              <h1 className="mt-4 text-4xl font-semibold leading-tight text-[#fff8ee] lg:text-6xl">
+                Sitio Hiyas Homeowners Association
+              </h1>
+              <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-[#fff4e7]/84 sm:text-base">
+                This public landing page is now separated from the resident tools. It introduces the community, presents Sitio Hiyas as a real homeowners homepage, and points residents directly to their dedicated resident page when they need records or lot details.
+              </p>
 
-            <div className="grid gap-3">
-              {lookupPreparation.map((item) => (
-                <div key={item} className="preview-stat">
-                  <span>Resident support</span>
-                  <strong>{item}</strong>
-                </div>
-              ))}
+              <div className="mt-8 flex justify-center">
+                <Link to="/resident-page" className="action-button action-button--primary">
+                  Go to Resident Page
+                </Link>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto mt-8 max-w-7xl px-4 lg:px-6">
-        <div className="grid gap-4 lg:grid-cols-3">
-          {featureCards.map((card) => (
-            <article key={card.title} className="surface-card p-6">
-              <p className="eyebrow">Platform feature</p>
-              <h3 className="mt-3 text-2xl font-semibold text-white">{card.title}</h3>
-              <p className="mt-4 text-sm leading-7 text-slate-300">{card.text}</p>
+      <section id="community" className="mx-auto max-w-7xl px-4 py-16 lg:px-6">
+        <div className="mx-auto max-w-3xl text-center">
+          <p className="eyebrow">Community overview</p>
+          <h2 className="mt-4 text-4xl font-semibold text-white">A public homepage that feels like a real subdivision website</h2>
+          <p className="mt-4 text-base leading-7 text-slate-300">
+            The homepage now acts as the welcome area for Sitio Hiyas, while the previous resident-focused content lives on its own separate resident page. That keeps the public side cleaner and gives homeowners a clearer next step.
+          </p>
+        </div>
+
+        <div className="mt-10 grid gap-5 md:grid-cols-3">
+          {publicFeatureCards.map((card, index) => (
+            <article key={card.title} className="surface-card p-6 text-center">
+              <span className="mx-auto inline-grid h-14 w-14 place-items-center rounded-full border border-[#88b04b]/30 bg-[#88b04b]/10 text-lg font-semibold text-[#88b04b]">
+                {`0${index + 1}`}
+              </span>
+              <h3 className="mt-5 text-xl font-semibold text-white">{card.title}</h3>
+              <p className="mt-3 text-sm leading-7 text-slate-300">{card.text}</p>
             </article>
           ))}
+        </div>
+      </section>
+
+      <section id="about" className="mx-auto max-w-7xl px-4 pb-16 lg:px-6">
+        <div className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
+          <article className="surface-card p-8 lg:p-10">
+            <p className="eyebrow">About</p>
+            <h2 className="mt-4 text-4xl font-semibold text-white">A cleaner front door for Sitio Hiyas</h2>
+            <p className="mt-5 text-base leading-8 text-slate-300">
+              This refreshed homepage is designed to feel more like the public association websites you referenced: a strong hero, a clear identity for the subdivision, and separate resident tools instead of putting everything on the front page.
+            </p>
+            <p className="mt-4 text-base leading-8 text-slate-300">
+              Residents who need occupancy details, payment visibility, or resident search can move straight into the resident page, while public visitors can stay on this landing page to understand what Sitio Hiyas is about.
+            </p>
+          </article>
+
+          <aside className="surface-card relative overflow-hidden p-8 lg:p-10">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(136,176,75,0.2),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(164,90,61,0.18),transparent_32%)]" />
+            <div className="relative">
+              <p className="eyebrow">Association details</p>
+              <h2 className="mt-4 text-4xl font-semibold text-white">Public details first, resident tools second</h2>
+
+              <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                {publicFacts.map((fact) => (
+                  <div key={fact.label} className="rounded-[1.4rem] border border-white/10 bg-white/5 p-5">
+                    <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-[#88b04b]">{fact.label}</p>
+                    <p className="mt-3 text-sm leading-7 text-slate-300">{fact.value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="resident" className="mx-auto max-w-5xl px-4 pb-16 lg:px-6">
+        <div className="surface-card p-8 text-center lg:p-10">
+          <p className="eyebrow">Resident page</p>
+          <h2 className="mt-4 text-4xl font-semibold text-white">Need your resident record, lot details, or payment history?</h2>
+          <p className="mx-auto mt-4 max-w-3xl text-base leading-8 text-slate-300">
+            The previous resident-focused landing content now lives on the resident page. Open that page to see occupancy visuals, resident guidance, and the path into your personal resident lookup.
+          </p>
+          <div className="mt-8 flex justify-center">
+            <Link to="/resident-page" className="action-button action-button--primary">
+              Open Resident Page
+            </Link>
+          </div>
         </div>
       </section>
     </main>
