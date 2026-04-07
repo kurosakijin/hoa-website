@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import ResidentFormModal from '../../components/ResidentFormModal';
 import TransferResidentModal from '../../components/TransferResidentModal';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import {
   createResident,
   deleteResident,
@@ -30,6 +31,14 @@ function hasTransferableLots(resident) {
 
 function getResidentStatus(resident) {
   const lockedLotCount = getLockedLotCount(resident);
+  const activeLotCount = resident.lots.filter((lot) => lot.isActive !== false).length;
+
+  if (activeLotCount === 0) {
+    return {
+      className: 'status-tag status-tag--violet',
+      label: 'No lot assigned',
+    };
+  }
 
   if (resident.totalBalance > 0 && resident.remainingBalance <= 0) {
     return {
@@ -53,24 +62,30 @@ function getResidentStatus(resident) {
 
 function AdminResidentsPage() {
   const { token } = useAuth();
+  const toast = useToast();
   const [residents, setResidents] = useState([]);
   const [search, setSearch] = useState('');
-  const [error, setError] = useState('');
   const [editingResident, setEditingResident] = useState(null);
   const [transferResidentTarget, setTransferResidentTarget] = useState(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
-  async function loadResidents() {
+  async function loadResidents({ notifyOnError = true } = {}) {
     try {
       setResidents(await getResidents(token));
-      setError('');
     } catch (loadError) {
-      setError(loadError.message);
+      if (notifyOnError) {
+        toast.error({
+          title: 'Resident directory unavailable',
+          message: loadError.message,
+        });
+      }
+
+      throw loadError;
     }
   }
 
   useEffect(() => {
-    loadResidents();
+    loadResidents().catch(() => {});
   }, [token]);
 
   const filteredResidents = useMemo(() => {
@@ -112,33 +127,44 @@ function AdminResidentsPage() {
 
   async function handleCreate(payload) {
     await createResident(token, payload);
-    await loadResidents();
+    await loadResidents({ notifyOnError: false });
   }
 
   async function handleUpdate(payload) {
     await updateResident(token, editingResident.id, payload);
-    await loadResidents();
+    await loadResidents({ notifyOnError: false });
   }
 
   async function handleTransfer(payload) {
     await transferResident(token, transferResidentTarget.id, payload);
-    await loadResidents();
+    await loadResidents({ notifyOnError: false });
   }
 
   async function handleDelete(residentId) {
-    if (
-      !window.confirm(
-        'Forfeit this resident? This will delete all payment history tied to the resident and their assigned block and lot records.'
-      )
-    ) {
+    const confirmed = await toast.confirm({
+      title: 'Forfeit this resident record?',
+      message: 'This will also delete the payment history tied to the resident and the assigned block and lot records.',
+      type: 'error',
+      confirmLabel: 'Forfeit resident',
+      cancelLabel: 'Keep record',
+    });
+
+    if (!confirmed) {
       return;
     }
 
     try {
       await deleteResident(token, residentId);
-      await loadResidents();
+      await loadResidents({ notifyOnError: false });
+      toast.success({
+        title: 'Resident forfeited',
+        message: 'The resident record and linked payment history were removed.',
+      });
     } catch (deleteError) {
-      setError(deleteError.message);
+      toast.error({
+        title: 'Forfeiture failed',
+        message: deleteError.message,
+      });
     }
   }
 
@@ -186,8 +212,6 @@ function AdminResidentsPage() {
           </div>
         </div>
 
-        {error ? <p className="mt-5 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
-
         {filteredResidents.length ? (
           <div className="resident-directory-grid">
             {filteredResidents.map((resident) => {
@@ -199,7 +223,7 @@ function AdminResidentsPage() {
                 ? 'Transfer an unpaid assigned lot to a new resident.'
                 : residentHasLockedLots
                   ? 'Fully paid lots are locked and cannot be transferred.'
-                  : 'No active lot is available to transfer.';
+                  : 'No assigned lot is available to transfer.';
 
               return (
                 <article key={resident.id} className="resident-directory-card resident-directory-card--list">
@@ -223,7 +247,7 @@ function AdminResidentsPage() {
                     <div className="resident-directory-card__header-side">
                       <span className={residentStatus.className}>{residentStatus.label}</span>
                       <p className="resident-directory-card__header-note">
-                        {activeLots.length} assigned lot{activeLots.length > 1 ? 's' : ''}
+                        {activeLots.length ? `${activeLots.length} assigned lot${activeLots.length > 1 ? 's' : ''}` : 'No property assigned yet'}
                       </p>
                     </div>
                   </div>
@@ -240,11 +264,15 @@ function AdminResidentsPage() {
                     <li className="resident-directory-card__detail-item">
                       <span className="resident-directory-card__detail-label">Assigned lots</span>
                       <div className="resident-directory-card__lot-list resident-directory-card__lot-list--stacked">
-                        {activeLots.map((lot) => (
-                          <span key={lot.id} className="resident-directory-card__lot-chip resident-directory-card__lot-chip--block">
-                            Block {lot.block} / Lot {lot.lotNumber}
-                          </span>
-                        ))}
+                        {activeLots.length ? (
+                          activeLots.map((lot) => (
+                            <span key={lot.id} className="resident-directory-card__lot-chip resident-directory-card__lot-chip--block">
+                              Block {lot.block} / Lot {lot.lotNumber}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="resident-directory-card__detail-value text-slate-400">No lot assigned yet</span>
+                        )}
                       </div>
                     </li>
                     <li className="resident-directory-card__detail-item">
@@ -259,7 +287,7 @@ function AdminResidentsPage() {
 
                   <div className="resident-directory-card__footer">
                     <p className="resident-directory-card__footer-note">
-                      Review the resident record, update profile details, transfer an unpaid lot, or forfeit an unpaid assignment.
+                      Review the resident record, update profile details, add a lot later, transfer an unpaid lot, or forfeit an unpaid assignment.
                     </p>
 
                     <div className="resident-directory-card__actions resident-directory-card__actions--list">

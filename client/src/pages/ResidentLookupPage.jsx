@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import ImagePreviewModal from '../components/ImagePreviewModal';
 import Seo from '../components/Seo';
+import { useToast } from '../context/ToastContext';
 import { searchResidentByDetails, searchResidentById } from '../services/api';
 import { formatCurrency, formatDateOnly } from '../utils/format';
 import { formatMiddleName, formatResidentFullName } from '../utils/middleInitial';
@@ -10,6 +11,7 @@ function getResidentInitials(resident) {
 }
 
 function ResidentLookupPage() {
+  const toast = useToast();
   const [detailForm, setDetailForm] = useState({
     lastName: '',
     firstName: '',
@@ -18,21 +20,31 @@ function ResidentLookupPage() {
   });
   const [residentId, setResidentId] = useState('');
   const [result, setResult] = useState(null);
-  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [receiptPreviewModal, setReceiptPreviewModal] = useState(null);
 
   async function handleDetailSearch(event) {
     event.preventDefault();
+
+    if (!detailForm.lastName.trim() || !detailForm.firstName.trim() || !detailForm.block.trim() || !detailForm.lotNumber.trim()) {
+      toast.warning({
+        title: 'Resident lookup is incomplete',
+        message: 'Please enter the last name, first name, block, and lot number before searching.',
+      });
+      return;
+    }
+
     setIsLoading(true);
-    setError('');
 
     try {
       const data = await searchResidentByDetails(detailForm);
       setResult(data);
     } catch (searchError) {
       setResult(null);
-      setError(searchError.message);
+      toast.warning({
+        title: 'No resident match found',
+        message: searchError.message,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -40,15 +52,26 @@ function ResidentLookupPage() {
 
   async function handleIdSearch(event) {
     event.preventDefault();
+
+    if (!residentId.trim()) {
+      toast.warning({
+        title: 'Resident ID is required',
+        message: 'Enter the resident ID first so we can look up the matching record.',
+      });
+      return;
+    }
+
     setIsLoading(true);
-    setError('');
 
     try {
       const data = await searchResidentById(residentId);
       setResult(data);
     } catch (searchError) {
       setResult(null);
-      setError(searchError.message);
+      toast.warning({
+        title: 'Resident ID not found',
+        message: searchError.message,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -80,24 +103,24 @@ function ResidentLookupPage() {
           </p>
 
           <div className="mt-8 grid gap-6 lg:grid-cols-2">
-            <form className="surface-card p-5" onSubmit={handleDetailSearch}>
+            <form className="surface-card p-5" onSubmit={handleDetailSearch} noValidate>
               <p className="eyebrow">Search by resident details</p>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <label className="field-shell">
                   <span>Last name</span>
-                  <input value={detailForm.lastName} onChange={(event) => setDetailForm((current) => ({ ...current, lastName: event.target.value }))} required />
+                  <input value={detailForm.lastName} onChange={(event) => setDetailForm((current) => ({ ...current, lastName: event.target.value }))} />
                 </label>
                 <label className="field-shell">
                   <span>First name</span>
-                  <input value={detailForm.firstName} onChange={(event) => setDetailForm((current) => ({ ...current, firstName: event.target.value }))} required />
+                  <input value={detailForm.firstName} onChange={(event) => setDetailForm((current) => ({ ...current, firstName: event.target.value }))} />
                 </label>
                 <label className="field-shell">
                   <span>Block</span>
-                  <input value={detailForm.block} onChange={(event) => setDetailForm((current) => ({ ...current, block: event.target.value }))} required />
+                  <input value={detailForm.block} onChange={(event) => setDetailForm((current) => ({ ...current, block: event.target.value }))} />
                 </label>
                 <label className="field-shell">
                   <span>Lot number</span>
-                  <input value={detailForm.lotNumber} onChange={(event) => setDetailForm((current) => ({ ...current, lotNumber: event.target.value }))} required />
+                  <input value={detailForm.lotNumber} onChange={(event) => setDetailForm((current) => ({ ...current, lotNumber: event.target.value }))} />
                 </label>
               </div>
               <button type="submit" className="action-button action-button--primary mt-4" disabled={isLoading}>
@@ -105,12 +128,12 @@ function ResidentLookupPage() {
               </button>
             </form>
 
-            <form className="surface-card p-5" onSubmit={handleIdSearch}>
+            <form className="surface-card p-5" onSubmit={handleIdSearch} noValidate>
               <p className="eyebrow">Search by resident ID</p>
               <div className="mt-4">
                 <label className="field-shell">
                   <span>Resident ID</span>
-                  <input value={residentId} onChange={(event) => setResidentId(event.target.value.toUpperCase())} placeholder="Example: HOA-A12F90" required />
+                  <input value={residentId} onChange={(event) => setResidentId(event.target.value.toUpperCase())} placeholder="Example: HOA-A12F90" />
                 </label>
               </div>
               <p className="mt-4 text-sm text-slate-400">
@@ -122,11 +145,6 @@ function ResidentLookupPage() {
             </form>
           </div>
 
-          {error ? (
-            <div className="mt-6 rounded-3xl border border-amber-500/30 bg-amber-500/10 px-5 py-4 text-sm text-amber-100">
-              {error}
-            </div>
-          ) : null}
         </section>
 
         {result ? (
@@ -148,7 +166,7 @@ function ResidentLookupPage() {
                 </div>
               </div>
 
-              <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <div className="info-chip">
                   <strong>Contact number</strong>
                   <span>{result.contactNumber}</span>
@@ -165,84 +183,95 @@ function ResidentLookupPage() {
                   <strong>Assigned lots</strong>
                   <span>{result.lots.length}</span>
                 </div>
+            </div>
+
+            {!result.lots.length ? (
+              <div className="mt-6 rounded-3xl border border-dashed border-white/10 bg-slate-950/40 px-5 py-5">
+                <p className="text-sm font-semibold text-white">No property assignment yet</p>
+                <p className="mt-2 text-sm leading-6 text-slate-400">
+                  This resident record exists, but no block and lot have been assigned yet. Contact the admin team if you expected a property assignment here.
+                </p>
               </div>
-            </div>
+            ) : null}
+          </div>
 
-            <div className={`grid gap-6 ${result.lots.length > 1 ? 'lg:grid-cols-2' : ''}`}>
-              {result.lots.map((lot) => (
-                <article key={lot.id} className="surface-card p-6">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                      <p className="eyebrow">Property assignment</p>
-                      <h3 className="mt-2 text-2xl font-semibold text-white">
-                        Block {lot.block} / Lot {lot.lotNumber}
-                      </h3>
+            {result.lots.length ? (
+              <div className={`grid gap-6 ${result.lots.length > 1 ? 'lg:grid-cols-2' : ''}`}>
+                {result.lots.map((lot) => (
+                  <article key={lot.id} className="surface-card p-6">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <p className="eyebrow">Property assignment</p>
+                        <h3 className="mt-2 text-2xl font-semibold text-white">
+                          Block {lot.block} / Lot {lot.lotNumber}
+                        </h3>
+                      </div>
+                      <span className="status-tag">{lot.squareMeters} sqm</span>
                     </div>
-                    <span className="status-tag">{lot.squareMeters} sqm</span>
-                  </div>
 
-                  <div className="mt-5 grid gap-4 md:grid-cols-2">
-                    <div className="info-chip">
-                      <strong>Total balance</strong>
-                      <span>{formatCurrency(lot.totalBalance)}</span>
+                    <div className="mt-5 grid gap-4 md:grid-cols-2">
+                      <div className="info-chip">
+                        <strong>Total balance</strong>
+                        <span>{formatCurrency(lot.totalBalance)}</span>
+                      </div>
+                      <div className="info-chip">
+                        <strong>Remaining balance</strong>
+                        <span>{formatCurrency(lot.remainingBalance)}</span>
+                      </div>
                     </div>
-                    <div className="info-chip">
-                      <strong>Remaining balance</strong>
-                      <span>{formatCurrency(lot.remainingBalance)}</span>
-                    </div>
-                  </div>
 
-                  <div className="mt-6">
-                    <p className="text-sm font-semibold text-white">Payment history</p>
-                    <div className="mt-3 overflow-x-auto">
-                      <table className="w-full min-w-170 text-left text-sm">
-                        <thead className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                          <tr>
-                            <th className="pb-3">Date</th>
-                            <th className="pb-3">Type</th>
-                            <th className="pb-3">Method</th>
-                            <th className="pb-3">Amount</th>
-                            <th className="pb-3">Receipt</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {lot.paymentHistory.map((payment) => (
-                            <tr key={payment.id} className="border-t border-white/8 text-slate-300">
-                              <td className="py-3">{formatDateOnly(payment.paymentDate)}</td>
-                              <td className="py-3">{payment.type}</td>
-                              <td className="py-3">{payment.method}</td>
-                              <td className="py-3">{formatCurrency(payment.amount)}</td>
-                              <td className="py-3">
-                                {payment.receiptImageUrl ? (
-                                  <button
-                                    type="button"
-                                    className="table-action"
-                                    onClick={() =>
-                                      setReceiptPreviewModal({
-                                        title: `Receipt for ${formatDateOnly(payment.paymentDate)}`,
-                                        imageUrl: payment.receiptImageUrl,
-                                      })
-                                    }
-                                  >
-                                    Show receipt
-                                  </button>
-                                ) : (
-                                  <span className="text-xs text-slate-500">No receipt</span>
-                                )}
-                              </td>
+                    <div className="mt-6">
+                      <p className="text-sm font-semibold text-white">Payment history</p>
+                      <div className="mt-3 overflow-x-auto">
+                        <table className="w-full min-w-170 text-left text-sm">
+                          <thead className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                            <tr>
+                              <th className="pb-3">Date</th>
+                              <th className="pb-3">Type</th>
+                              <th className="pb-3">Method</th>
+                              <th className="pb-3">Amount</th>
+                              <th className="pb-3">Receipt</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          </thead>
+                          <tbody>
+                            {lot.paymentHistory.map((payment) => (
+                              <tr key={payment.id} className="border-t border-white/8 text-slate-300">
+                                <td className="py-3">{formatDateOnly(payment.paymentDate)}</td>
+                                <td className="py-3">{payment.type}</td>
+                                <td className="py-3">{payment.method}</td>
+                                <td className="py-3">{formatCurrency(payment.amount)}</td>
+                                <td className="py-3">
+                                  {payment.receiptImageUrl ? (
+                                    <button
+                                      type="button"
+                                      className="table-action"
+                                      onClick={() =>
+                                        setReceiptPreviewModal({
+                                          title: `Receipt for ${formatDateOnly(payment.paymentDate)}`,
+                                          imageUrl: payment.receiptImageUrl,
+                                        })
+                                      }
+                                    >
+                                      Show receipt
+                                    </button>
+                                  ) : (
+                                    <span className="text-xs text-slate-500">No receipt</span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
 
-                    {!lot.paymentHistory.length ? (
-                      <p className="mt-3 text-sm text-slate-400">No payment history recorded for this lot yet.</p>
-                    ) : null}
-                  </div>
-                </article>
-              ))}
-            </div>
+                      {!lot.paymentHistory.length ? (
+                        <p className="mt-3 text-sm text-slate-400">No payment history recorded for this lot yet.</p>
+                      ) : null}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : null}
           </section>
         ) : null}
       </main>

@@ -135,6 +135,10 @@ export function getPublicOccupancySummary() {
   return request(() => api.get('/public/occupancy-summary'));
 }
 
+export function getPublicBlockLotStatus() {
+  return request(() => api.get('/public/block-lot-status'));
+}
+
 export function getPublicLandingPageContent() {
   return request(() => api.get('/public/landing-page-content'));
 }

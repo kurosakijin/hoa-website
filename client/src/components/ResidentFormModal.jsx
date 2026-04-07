@@ -11,6 +11,7 @@ import {
   DEFAULT_SQUARE_METERS,
   derivePricePerSquareMeter,
 } from '../utils/lotPricing';
+import { useToast } from '../context/ToastContext';
 import { sanitizeContactNumber } from '../utils/contactNumber';
 import { sanitizeMiddleName } from '../utils/middleInitial';
 import { formatCurrency } from '../utils/format';
@@ -82,7 +83,7 @@ function createInitialState(resident) {
       lastName: '',
       contactNumber: '',
       address: '',
-      lots: [createEmptyLot()],
+      lots: [],
     };
   }
 
@@ -94,6 +95,14 @@ function createInitialState(resident) {
     address: resident.address,
     lots: resident.lots.map((lot) => createLotState(lot)),
   };
+}
+
+function hasLotInput(lot) {
+  return Boolean(
+    String(lot?.block || '').trim() ||
+      String(lot?.lotNumber || '').trim() ||
+      String(lot?.pricePerSquareMeter || '').trim()
+  );
 }
 
 function buildSelectedLotKeys(lots, excludedIndex = -1) {
@@ -125,11 +134,9 @@ function validateResidentForm(form) {
     return 'Address is required.';
   }
 
-  if (!Array.isArray(form.lots) || !form.lots.length) {
-    return 'At least one lot must be assigned to the resident.';
-  }
+  const configuredLots = Array.isArray(form.lots) ? form.lots.filter(hasLotInput) : [];
 
-  for (const [index, lot] of form.lots.entries()) {
+  for (const [index, lot] of configuredLots.entries()) {
     if (!String(lot.block || '').trim()) {
       return `Block is required for lot assignment ${index + 1}.`;
     }
@@ -151,11 +158,11 @@ function validateResidentForm(form) {
 }
 
 function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit }) {
+  const toast = useToast();
   const [form, setForm] = useState(createInitialState(resident));
   const [profileImageFile, setProfileImageFile] = useState(null);
   const [profileImagePreview, setProfileImagePreview] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState('');
 
   const occupiedLotKeys = useMemo(
     () =>
@@ -188,7 +195,6 @@ function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit
     setForm(createInitialState(resident));
     setProfileImageFile(null);
     setProfileImagePreview(resident?.profileImageUrl || '');
-    setError('');
   }, [resident, isOpen]);
 
   function updateField(field, value) {
@@ -233,6 +239,10 @@ function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit
 
   function addLot() {
     if (!hasAvailableLots) {
+      toast.warning({
+        title: 'No vacant lots left',
+        message: 'There are no additional available lots to assign right now.',
+      });
       return;
     }
 
@@ -265,18 +275,22 @@ function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit
     const validationError = validateResidentForm(form);
 
     if (validationError) {
-      setError(validationError);
+      toast.warning({
+        title: 'Resident form is incomplete',
+        message: validationError,
+      });
       return;
     }
 
     setIsSaving(true);
-    setError('');
 
     try {
+      const configuredLots = form.lots.filter(hasLotInput);
+
       await onSubmit({
         ...form,
         profileImageFile,
-        lots: form.lots.map((lot) => ({
+        lots: configuredLots.map((lot) => ({
           id: lot.id,
           block: lot.block,
           lotNumber: lot.lotNumber,
@@ -288,9 +302,18 @@ function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit
           isActive: lot.isActive,
         })),
       });
+      toast.success({
+        title: resident ? 'Resident changes saved' : 'Resident created',
+        message: resident
+          ? 'The resident record was updated successfully.'
+          : 'The resident record is now part of the directory.',
+      });
       onClose();
     } catch (submitError) {
-      setError(submitError.message);
+      toast.error({
+        title: resident ? 'Could not save resident changes' : 'Could not create resident',
+        message: submitError.message,
+      });
     } finally {
       setIsSaving(false);
     }
@@ -371,7 +394,7 @@ function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit
             <div>
               <p className="text-sm font-semibold text-white">Assigned lots</p>
               <p className="text-sm text-slate-400">
-                Square meters start at 60. Total and remaining balances are calculated automatically from the pricing setup.
+                Lot assignment is optional. When you add one, square meters start at 60 and balances are calculated automatically from the pricing setup.
               </p>
             </div>
             <button
@@ -383,6 +406,15 @@ function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit
               Add lot
             </button>
           </div>
+
+          {!form.lots.length ? (
+            <div className="rounded-3xl border border-dashed border-white/10 bg-slate-950/30 px-5 py-6">
+              <p className="text-sm font-semibold text-white">No lot assigned yet</p>
+              <p className="mt-2 text-sm leading-6 text-slate-400">
+                You can save this resident without a block and lot assignment, then add the property details later from the edit screen.
+              </p>
+            </div>
+          ) : null}
 
           {form.lots.map((lot, index) => {
             const lotLocked = isLotLocked(lot);
@@ -413,7 +445,7 @@ function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit
                     <p className="text-sm font-semibold text-white">Lot assignment {index + 1}</p>
                     {lotLocked ? <span className="status-tag">Fully paid and locked</span> : null}
                   </div>
-                  {form.lots.length > 1 && !lotLocked ? (
+                  {!lotLocked ? (
                     <button type="button" className="action-button action-button--danger" onClick={() => removeLot(index)}>
                       Forfeit lot
                     </button>
@@ -536,8 +568,6 @@ function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit
             No additional vacant lots are available right now. Existing assigned lots can still be reviewed without duplicating another resident&apos;s block and lot.
           </p>
         ) : null}
-
-        {error ? <p className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
 
         <div className="flex justify-end gap-3">
           <button type="button" className="action-button action-button--ghost" onClick={onClose}>

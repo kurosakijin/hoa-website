@@ -3,6 +3,7 @@ import AdminLayout from './components/AdminLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import PublicLayout from './components/PublicLayout';
 import AdminLoginPage from './pages/AdminLoginPage';
+import BlockLotsPage from './pages/BlockLotsPage';
 import LandingPage from './pages/LandingPage';
 import ResidentPage from './pages/ResidentPage';
 import ResidentLookupPage from './pages/ResidentLookupPage';
@@ -18,6 +19,7 @@ function App() {
       <Route path="/" element={<PublicLayout />}>
         <Route index element={<LandingPage />} />
         <Route path="resident-page" element={<ResidentPage />} />
+        <Route path="block-and-lots" element={<BlockLotsPage />} />
         <Route path="find-my-resident-info" element={<ResidentLookupPage />} />
       </Route>
 

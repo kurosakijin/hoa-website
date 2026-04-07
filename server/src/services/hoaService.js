@@ -1,7 +1,7 @@
 const Resident = require('../models/Resident');
 const Payment = require('../models/Payment');
 const { residents: seedResidents, payments: seedPayments } = require('../data/seedData');
-const { isAllowedLotSelection } = require('../data/lotCatalog');
+const { LOT_CATALOG, isAllowedLotSelection } = require('../data/lotCatalog');
 const { generateResidentCode } = require('../utils/ids');
 const {
   DEFAULT_SQUARE_METERS,
@@ -692,6 +692,63 @@ async function getPublicOccupancySummary() {
   };
 }
 
+async function getPublicBlockLotStatus() {
+  const residents = await Resident.find({ isActive: true }).select('lastName profileImageUrl lots');
+  const occupiedLotMap = new Map();
+
+  residents.forEach((resident) => {
+    resident.lots
+      .filter((lot) => lot.isActive !== false)
+      .forEach((lot) => {
+        const lotKey = `${lot.block}:${lot.lotNumber}`;
+
+        occupiedLotMap.set(lotKey, {
+          residentLastName: resident.lastName,
+          residentProfileImageUrl: resident.profileImageUrl || '',
+          status: isLotFullyPaid(lot) ? 'fully-paid' : 'occupied',
+        });
+      });
+  });
+
+  const blocks = Object.entries(LOT_CATALOG)
+    .sort(([leftBlock], [rightBlock]) => Number(leftBlock) - Number(rightBlock))
+    .map(([block, lotNumbers]) => ({
+      block,
+      lots: lotNumbers.map((lotNumber) => {
+        const assignedLot = occupiedLotMap.get(`${block}:${lotNumber}`);
+
+        return {
+          lotNumber,
+          residentLastName: assignedLot?.residentLastName || '',
+          residentProfileImageUrl: assignedLot?.residentProfileImageUrl || '',
+          status: assignedLot?.status || 'available',
+        };
+      }),
+    }));
+
+  const totals = blocks.reduce(
+    (summary, block) => {
+      block.lots.forEach((lot) => {
+        if (lot.status === 'available') {
+          summary.available += 1;
+        } else if (lot.status === 'occupied') {
+          summary.occupied += 1;
+        } else if (lot.status === 'fully-paid') {
+          summary.fullyPaid += 1;
+        }
+      });
+
+      return summary;
+    },
+    { available: 0, occupied: 0, fullyPaid: 0 }
+  );
+
+  return {
+    blocks,
+    totals,
+  };
+}
+
 async function listResidents() {
   const residents = await Resident.find().sort({ lastName: 1, firstName: 1 });
   return residents.map(toResidentSummary);
@@ -702,10 +759,6 @@ async function createResident(payload, options = {}) {
 
   if (!normalized.firstName || !normalized.lastName || !normalized.contactNumber || !normalized.address) {
     throw new Error('Resident name, contact number, and address are required.');
-  }
-
-  if (!normalized.lots.length) {
-    throw new Error('At least one lot must be assigned to the resident.');
   }
 
   assertLotFinancialsValid(normalized.lots);
@@ -736,10 +789,6 @@ async function updateResident(residentId, payload, options = {}) {
   }
 
   const normalized = normalizeResidentInput(payload);
-
-  if (!normalized.lots.length) {
-    throw new Error('At least one lot must remain assigned to the resident.');
-  }
 
   const lockedLotConflict = findLockedLotConflict(resident, normalized.lots);
   if (lockedLotConflict) {
@@ -1160,6 +1209,7 @@ async function buildPublicResidentPayload(resident, visibleLotIds) {
 module.exports = {
   ensureDatabaseSeeded,
   getDashboardSummary,
+  getPublicBlockLotStatus,
   getPublicOccupancySummary,
   listResidents,
   createResident,

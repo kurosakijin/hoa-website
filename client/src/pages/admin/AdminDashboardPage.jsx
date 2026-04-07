@@ -12,22 +12,37 @@ import {
 } from 'recharts';
 import MetricCard from '../../components/MetricCard';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { getDashboardSummary } from '../../services/api';
 import { formatCurrency, formatDate } from '../../utils/format';
 
 function AdminDashboardPage() {
   const { token } = useAuth();
+  const toast = useToast();
   const [summary, setSummary] = useState(null);
-  const [error, setError] = useState('');
+  const [hasLoadError, setHasLoadError] = useState(false);
 
   useEffect(() => {
     getDashboardSummary(token)
-      .then(setSummary)
-      .catch((dashboardError) => setError(dashboardError.message));
+      .then((data) => {
+        setSummary(data);
+        setHasLoadError(false);
+      })
+      .catch((dashboardError) => {
+        setHasLoadError(true);
+        toast.error({
+          title: 'Dashboard summary unavailable',
+          message: dashboardError.message,
+        });
+      });
   }, [token]);
 
-  if (error) {
-    return <div className="surface-card p-6 text-sm text-rose-200">{error}</div>;
+  if (hasLoadError) {
+    return (
+      <div className="surface-card p-6 text-sm text-slate-300">
+        Dashboard data could not be loaded right now. Try refreshing the admin workspace again.
+      </div>
+    );
   }
 
   if (!summary) {

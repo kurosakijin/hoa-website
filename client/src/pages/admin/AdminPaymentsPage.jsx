@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import PaymentLotModal from '../../components/PaymentLotModal';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import {
   createPayment,
   deletePayment,
@@ -12,24 +13,30 @@ import { formatCurrency } from '../../utils/format';
 
 function AdminPaymentsPage() {
   const { token } = useAuth();
+  const toast = useToast();
   const [lots, setLots] = useState([]);
   const [search, setSearch] = useState('');
   const [selectedLot, setSelectedLot] = useState(null);
   const [selectedLotDetail, setSelectedLotDetail] = useState(null);
   const [isModalLoading, setIsModalLoading] = useState(false);
-  const [error, setError] = useState('');
 
-  async function loadLots() {
+  async function loadLots({ notifyOnError = true } = {}) {
     try {
       setLots(await getPaymentLots(token));
-      setError('');
     } catch (loadError) {
-      setError(loadError.message);
+      if (notifyOnError) {
+        toast.error({
+          title: 'Payment lots unavailable',
+          message: loadError.message,
+        });
+      }
+
+      throw loadError;
     }
   }
 
   useEffect(() => {
-    loadLots();
+    loadLots().catch(() => {});
   }, [token]);
 
   const filteredLots = useMemo(() => {
@@ -55,7 +62,11 @@ function AdminPaymentsPage() {
       const detail = await getPaymentLotDetails(token, lot.residentId, lot.lotId);
       setSelectedLotDetail(detail);
     } catch (loadError) {
-      setError(loadError.message);
+      toast.error({
+        title: 'Could not open lot details',
+        message: loadError.message,
+      });
+      setSelectedLot(null);
     } finally {
       setIsModalLoading(false);
     }
@@ -68,7 +79,7 @@ function AdminPaymentsPage() {
 
     const detail = await getPaymentLotDetails(token, selectedLot.residentId, selectedLot.lotId);
     setSelectedLotDetail(detail);
-    await loadLots();
+    await loadLots({ notifyOnError: false });
   }
 
   async function handleCreatePayment(payload) {
@@ -111,8 +122,6 @@ function AdminPaymentsPage() {
             placeholder="Search resident, block, lot, or resident ID..."
           />
         </div>
-
-        {error ? <p className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
 
         <div className="mt-6 overflow-x-auto">
           <table className="w-full min-w-[980px] text-left text-sm">

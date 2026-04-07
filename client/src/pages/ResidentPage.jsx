@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import { Link } from 'react-router-dom';
 import Seo from '../components/Seo';
+import { useToast } from '../context/ToastContext';
 import { getPublicOccupancySummary } from '../services/api';
 
 const featureCards = [
@@ -40,6 +41,7 @@ const lookupPreparation = [
 ];
 
 function ResidentPage() {
+  const toast = useToast();
   const [occupancySummary, setOccupancySummary] = useState({
     occupiedResidents: 0,
     occupiedLots: 0,
@@ -68,6 +70,10 @@ function ResidentPage() {
         }
 
         setOccupancyError(error.message);
+        toast.warning({
+          title: 'Occupancy summary unavailable',
+          message: error.message,
+        });
       } finally {
         if (isMounted) {
           setIsLoadingSummary(false);
@@ -112,6 +118,9 @@ function ResidentPage() {
           <div className="mt-8 flex flex-wrap gap-3">
             <Link to="/find-my-resident-info" className="action-button action-button--primary">
               Find My Resident Info
+            </Link>
+            <Link to="/block-and-lots" className="action-button action-button--secondary">
+              Block and Lots
             </Link>
           </div>
 
@@ -170,12 +179,6 @@ function ResidentPage() {
                   <strong>{isLoadingSummary ? '...' : occupancySummary.occupiedLots}</strong>
                 </div>
               </div>
-
-              {occupancyError ? (
-                <p className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                  {occupancyError}
-                </p>
-              ) : null}
 
               {!occupancyError && !isLoadingSummary && occupancySummary.occupiedBlocks.length ? (
                 <div className="mt-5 h-72">

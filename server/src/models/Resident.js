@@ -27,9 +27,10 @@ const residentSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: true },
     lots: {
       type: [lotSchema],
+      default: [],
       validate: {
-        validator: (value) => Array.isArray(value) && value.length > 0,
-        message: 'At least one lot is required.',
+        validator: (value) => Array.isArray(value),
+        message: 'Lots must be stored as an array.',
       },
     },
   },

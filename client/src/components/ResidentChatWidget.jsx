@@ -51,11 +51,12 @@ function ResidentChatWidget({
   residentChat,
   chatMessage,
   attachmentImageFile,
-  chatError,
   isChatLoading,
   isChatSending,
   position,
+  size,
   onPositionChange,
+  onSizeChange,
   onResidentChatIdChange,
   onConnect,
   onSend,
@@ -67,6 +68,7 @@ function ResidentChatWidget({
 }) {
   const widgetRef = useRef(null);
   const dragStateRef = useRef(null);
+  const resizeStateRef = useRef(null);
   const messagesEndRef = useRef(null);
   const attachmentInputRef = useRef(null);
   const [previewImage, setPreviewImage] = useState(null);
@@ -178,11 +180,87 @@ function ResidentChatWidget({
     event.stopPropagation();
   }
 
+  function handleResizeStart(event) {
+    if ((event.pointerType === 'mouse' && event.button !== 0) || !widgetRef.current || isMinimized) {
+      return;
+    }
+
+    event.stopPropagation();
+    const rect = widgetRef.current.getBoundingClientRect();
+    const activePointerId = event.pointerId;
+    const currentTarget = event.currentTarget;
+
+    function handlePointerMove(moveEvent) {
+      if (!resizeStateRef.current || moveEvent.pointerId !== activePointerId) {
+        return;
+      }
+
+      const nextWidth = resizeStateRef.current.startWidth + (moveEvent.clientX - resizeStateRef.current.startX);
+      const nextHeight = resizeStateRef.current.startHeight + (moveEvent.clientY - resizeStateRef.current.startY);
+
+      onSizeChange({
+        width: nextWidth,
+        height: nextHeight,
+      });
+    }
+
+    function cleanupResize() {
+      resizeStateRef.current = null;
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
+
+      if (currentTarget?.releasePointerCapture) {
+        try {
+          currentTarget.releasePointerCapture(activePointerId);
+        } catch (_error) {
+          // Ignore release failures when the pointer is already gone.
+        }
+      }
+    }
+
+    function handlePointerUp(upEvent) {
+      if (upEvent.pointerId !== activePointerId) {
+        return;
+      }
+
+      cleanupResize();
+    }
+
+    resizeStateRef.current = {
+      startHeight: rect.height,
+      startWidth: rect.width,
+      startX: event.clientX,
+      startY: event.clientY,
+    };
+
+    if (currentTarget?.setPointerCapture) {
+      try {
+        currentTarget.setPointerCapture(activePointerId);
+      } catch (_error) {
+        // Ignore capture failures and continue with window listeners.
+      }
+    }
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
+  }
+
   return (
     <div
       ref={widgetRef}
       className={`resident-chat-widget ${isMinimized ? 'resident-chat-widget--minimized' : ''}`}
-      style={position ? { left: `${position.x}px`, top: `${position.y}px` } : undefined}
+      style={
+        position
+          ? {
+              height: !isMinimized && size ? `${size.height}px` : undefined,
+              left: `${position.x}px`,
+              top: `${position.y}px`,
+              width: !isMinimized && size ? `${size.width}px` : undefined,
+            }
+          : undefined
+      }
     >
       <div className="resident-chat-widget__header" onPointerDown={handleDragStart}>
         <div className="resident-chat-widget__identity">
@@ -375,12 +453,6 @@ function ResidentChatWidget({
               </form>
             </>
           ) : null}
-
-          {chatError ? (
-            <p className="resident-chat-widget__error">
-              {chatError}
-            </p>
-          ) : null}
         </div>
       ) : null}
       <ImagePreviewModal
@@ -390,6 +462,18 @@ function ResidentChatWidget({
         imageUrl={previewImage?.imageUrl || ''}
         onClose={() => setPreviewImage(null)}
       />
+      {!isMinimized ? (
+        <button
+          type="button"
+          className="resident-chat-widget__resize-handle"
+          onPointerDown={handleResizeStart}
+          aria-label="Resize chat window"
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+      ) : null}
     </div>
   );
 }

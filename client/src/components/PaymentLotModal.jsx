@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import ImagePreviewModal from './ImagePreviewModal';
 import Modal from './Modal';
+import { useToast } from '../context/ToastContext';
 import { formatCurrency, formatDateOnly, toDateInputValue } from '../utils/format';
 import { formatResidentFullName } from '../utils/middleInitial';
 
@@ -42,12 +43,12 @@ function PaymentLotModal({
   onUpdatePayment,
   onDeletePayment,
 }) {
+  const toast = useToast();
   const [editingPayment, setEditingPayment] = useState(null);
   const [form, setForm] = useState(createPaymentForm());
   const [receiptImageFile, setReceiptImageFile] = useState(null);
   const [receiptImagePreview, setReceiptImagePreview] = useState('');
   const [receiptPreviewModal, setReceiptPreviewModal] = useState(null);
-  const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -56,7 +57,6 @@ function PaymentLotModal({
     setReceiptImageFile(null);
     setReceiptImagePreview('');
     setReceiptPreviewModal(null);
-    setError('');
   }, [detail, isOpen]);
 
   useEffect(() => {
@@ -81,12 +81,14 @@ function PaymentLotModal({
     const validationError = validatePaymentForm(form);
 
     if (validationError) {
-      setError(validationError);
+      toast.warning({
+        title: 'Payment details are incomplete',
+        message: validationError,
+      });
       return;
     }
 
     setIsSaving(true);
-    setError('');
 
     try {
       if (editingPayment) {
@@ -105,26 +107,50 @@ function PaymentLotModal({
         });
       }
 
+      toast.success({
+        title: editingPayment ? 'Payment updated' : 'Payment recorded',
+        message: editingPayment
+          ? 'The payment entry and receipt details were updated.'
+          : 'The payment entry was added to the resident ledger.',
+      });
       setEditingPayment(null);
       setForm(createPaymentForm());
       setReceiptImageFile(null);
       setReceiptImagePreview('');
     } catch (submitError) {
-      setError(submitError.message);
+      toast.error({
+        title: editingPayment ? 'Could not update payment' : 'Could not record payment',
+        message: submitError.message,
+      });
     } finally {
       setIsSaving(false);
     }
   }
 
   async function handleDelete(paymentId) {
-    if (!window.confirm('Remove this payment history record?')) {
+    const confirmed = await toast.confirm({
+      title: 'Remove this payment record?',
+      message: 'This will permanently delete the selected payment history entry.',
+      type: 'error',
+      confirmLabel: 'Remove payment',
+      cancelLabel: 'Keep payment',
+    });
+
+    if (!confirmed) {
       return;
     }
 
     try {
       await onDeletePayment(paymentId);
+      toast.success({
+        title: 'Payment removed',
+        message: 'The selected payment history entry is gone.',
+      });
     } catch (deleteError) {
-      setError(deleteError.message);
+      toast.error({
+        title: 'Could not remove payment',
+        message: deleteError.message,
+      });
     }
   }
 
@@ -272,8 +298,6 @@ function PaymentLotModal({
                     <input value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} />
                   </label>
                 </div>
-
-                {error ? <p className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
 
                 <div className="mt-4 flex justify-end">
                   <button type="submit" className="action-button action-button--primary" disabled={isSaving}>

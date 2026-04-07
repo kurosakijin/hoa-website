@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { defaultLandingPageContent } from '../../data/landingPageContent';
 import {
   getAdminLandingPageContent,
@@ -8,12 +9,11 @@ import {
 
 function AdminLandingPageEditor() {
   const { token } = useAuth();
+  const toast = useToast();
   const [form, setForm] = useState(defaultLandingPageContent);
   const [lastSavedAt, setLastSavedAt] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     let isMounted = true;
@@ -29,14 +29,16 @@ function AdminLandingPageEditor() {
           ...(data.content || {}),
         });
         setLastSavedAt(data.updatedAt || '');
-        setError('');
       })
       .catch((loadError) => {
         if (!isMounted) {
           return;
         }
 
-        setError(loadError.message);
+        toast.error({
+          title: 'Landing page editor unavailable',
+          message: loadError.message,
+        });
       })
       .finally(() => {
         if (isMounted) {
@@ -55,7 +57,6 @@ function AdminLandingPageEditor() {
       ...current,
       [name]: value,
     }));
-    setSuccessMessage('');
   }
 
   async function handleSubmit(event) {
@@ -69,11 +70,15 @@ function AdminLandingPageEditor() {
         ...(data.content || {}),
       });
       setLastSavedAt(data.updatedAt || '');
-      setError('');
-      setSuccessMessage('Landing page headers were saved to the database.');
+      toast.success({
+        title: 'Landing page updated',
+        message: 'The public landing page headers were saved successfully.',
+      });
     } catch (saveError) {
-      setError(saveError.message);
-      setSuccessMessage('');
+      toast.error({
+        title: 'Could not save landing page',
+        message: saveError.message,
+      });
     } finally {
       setIsSaving(false);
     }
@@ -81,7 +86,10 @@ function AdminLandingPageEditor() {
 
   function handleResetToDefaults() {
     setForm(defaultLandingPageContent);
-    setSuccessMessage('');
+    toast.info({
+      title: 'Editor reset',
+      message: 'The form was reset to the default landing page copy. Save if you want to publish it.',
+    });
   }
 
   if (isLoading) {
@@ -106,18 +114,6 @@ function AdminLandingPageEditor() {
             {lastSavedAt ? <span>Last saved: {new Date(lastSavedAt).toLocaleString('en-PH')}</span> : null}
           </div>
         </div>
-
-        {error ? (
-          <p className="mt-5 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
-            {error}
-          </p>
-        ) : null}
-
-        {successMessage ? (
-          <p className="mt-5 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-            {successMessage}
-          </p>
-        ) : null}
       </section>
 
       <form className="space-y-6" onSubmit={handleSubmit}>

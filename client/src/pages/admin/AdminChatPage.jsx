@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import ImagePreviewModal from '../../components/ImagePreviewModal';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import {
   clearAdminChatThread,
   clearAdminChatTyping,
@@ -26,6 +27,7 @@ function getResidentInitials(name) {
 
 function AdminChatPage() {
   const { token } = useAuth();
+  const toast = useToast();
   const [threads, setThreads] = useState([]);
   const [adminPresence, setAdminPresence] = useState(null);
   const [selectedThreadId, setSelectedThreadId] = useState('');
@@ -36,7 +38,6 @@ function AdminChatPage() {
   const [isThreadLoading, setIsThreadLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
-  const [error, setError] = useState('');
   const [previewImage, setPreviewImage] = useState(null);
   const typingTimeoutRef = useRef(null);
   const selectedThreadIdRef = useRef('');
@@ -52,9 +53,13 @@ function AdminChatPage() {
       const data = await getAdminChatThreads(token);
       setThreads(data.threads);
       setAdminPresence(data.adminPresence);
-      setError('');
     } catch (loadError) {
-      setError(loadError.message);
+      if (!silent) {
+        toast.error({
+          title: 'Could not load chat threads',
+          message: loadError.message,
+        });
+      }
     } finally {
       if (!silent) {
         setIsThreadsLoading(false);
@@ -76,9 +81,13 @@ function AdminChatPage() {
       const data = await getAdminChatThread(token, threadId);
       setSelectedThread(data.thread);
       setAdminPresence(data.adminPresence);
-      setError('');
     } catch (loadError) {
-      setError(loadError.message);
+      if (!silent) {
+        toast.error({
+          title: 'Could not open this conversation',
+          message: loadError.message,
+        });
+      }
     } finally {
       if (!silent) {
         setIsThreadLoading(false);
@@ -217,7 +226,6 @@ function AdminChatPage() {
       setAdminPresence(data.adminPresence);
       setMessage('');
       setAttachmentImageFile(null);
-      setError('');
 
       if (attachmentInputRef.current) {
         attachmentInputRef.current.value = '';
@@ -225,7 +233,10 @@ function AdminChatPage() {
 
       await loadThreads({ silent: true });
     } catch (sendError) {
-      setError(sendError.message);
+      toast.error({
+        title: 'Message not sent',
+        message: sendError.message,
+      });
     } finally {
       setIsSending(false);
     }
@@ -241,20 +252,25 @@ function AdminChatPage() {
 
     if (!ALLOWED_CHAT_ATTACHMENT_TYPES.includes(nextFile.type)) {
       setAttachmentImageFile(null);
-      setError('Only PNG and JPG images up to 2 MB are allowed for chat attachments.');
+      toast.warning({
+        title: 'Attachment not allowed',
+        message: 'Only PNG and JPG images up to 2 MB are allowed for chat attachments.',
+      });
       event.target.value = '';
       return;
     }
 
     if (nextFile.size > MAX_CHAT_ATTACHMENT_BYTES) {
       setAttachmentImageFile(null);
-      setError('Only PNG and JPG images up to 2 MB are allowed for chat attachments.');
+      toast.warning({
+        title: 'Attachment too large',
+        message: 'Only PNG and JPG images up to 2 MB are allowed for chat attachments.',
+      });
       event.target.value = '';
       return;
     }
 
     setAttachmentImageFile(nextFile);
-    setError('');
   }
 
   function handleClearAttachment() {
@@ -270,7 +286,15 @@ function AdminChatPage() {
       return;
     }
 
-    if (!window.confirm('Clear this chat thread? This will delete the whole conversation for both the resident and admin.')) {
+    const confirmed = await toast.confirm({
+      title: 'Clear this conversation?',
+      message: 'This will delete the full resident and admin chat history for this case.',
+      type: 'error',
+      confirmLabel: 'Clear chat',
+      cancelLabel: 'Keep messages',
+    });
+
+    if (!confirmed) {
       return;
     }
 
@@ -282,15 +306,21 @@ function AdminChatPage() {
       setSelectedThreadId('');
       setMessage('');
       setAttachmentImageFile(null);
-      setError('');
 
       if (attachmentInputRef.current) {
         attachmentInputRef.current.value = '';
       }
 
       await loadThreads({ silent: true });
+      toast.success({
+        title: 'Conversation cleared',
+        message: 'The solved resident chat thread was deleted.',
+      });
     } catch (clearError) {
-      setError(clearError.message);
+      toast.error({
+        title: 'Could not clear conversation',
+        message: clearError.message,
+      });
     } finally {
       setIsClearing(false);
     }
@@ -322,9 +352,6 @@ function AdminChatPage() {
             ) : null}
           </div>
         </div>
-
-        {error ? <p className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
-
         <div className="admin-chat-messenger__shell">
           <aside className="admin-chat-messenger__sidebar">
             <div className="admin-chat-messenger__sidebar-header">

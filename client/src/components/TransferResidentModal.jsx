@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import Modal from './Modal';
+import { useToast } from '../context/ToastContext';
 import { sanitizeContactNumber } from '../utils/contactNumber';
 import { sanitizeMiddleName } from '../utils/middleInitial';
 
@@ -49,15 +50,14 @@ function validateTransferForm(form) {
 }
 
 function TransferResidentModal({ isOpen, resident, onClose, onSubmit }) {
+  const toast = useToast();
   const [form, setForm] = useState(createInitialState(resident));
   const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState('');
   const transferableLots = getTransferableLots(resident);
   const hasLockedLots = resident?.lots?.some((lot) => isLotLocked(lot)) || false;
 
   useEffect(() => {
     setForm(createInitialState(resident));
-    setError('');
   }, [resident, isOpen]);
 
   async function handleSubmit(event) {
@@ -65,18 +65,27 @@ function TransferResidentModal({ isOpen, resident, onClose, onSubmit }) {
     const validationError = validateTransferForm(form);
 
     if (validationError) {
-      setError(validationError);
+      toast.warning({
+        title: 'Transfer form is incomplete',
+        message: validationError,
+      });
       return;
     }
 
     setIsSaving(true);
-    setError('');
 
     try {
       await onSubmit(form);
+      toast.success({
+        title: 'Transfer completed',
+        message: 'The lot now belongs to the new resident record.',
+      });
       onClose();
     } catch (submitError) {
-      setError(submitError.message);
+      toast.error({
+        title: 'Transfer could not be completed',
+        message: submitError.message,
+      });
     } finally {
       setIsSaving(false);
     }
@@ -158,8 +167,6 @@ function TransferResidentModal({ isOpen, resident, onClose, onSubmit }) {
           <span>Address</span>
           <input value={form.address} onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))} />
         </label>
-
-        {error ? <p className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
 
         <div className="flex justify-end gap-3">
           <button type="button" className="action-button action-button--ghost" onClick={onClose}>

@@ -6,6 +6,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { ToastProvider } from './context/ToastContext';
 import './styles/tailwind.css';
 import './styles/main.scss';
 
@@ -16,13 +17,15 @@ const enableVercelSpeedInsights =
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ThemeProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          <App />
-          {enableVercelAnalytics ? <Analytics /> : null}
-          {enableVercelSpeedInsights ? <SpeedInsights /> : null}
-        </BrowserRouter>
-      </AuthProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <App />
+            {enableVercelAnalytics ? <Analytics /> : null}
+            {enableVercelSpeedInsights ? <SpeedInsights /> : null}
+          </BrowserRouter>
+        </AuthProvider>
+      </ToastProvider>
     </ThemeProvider>
   </StrictMode>,
 );

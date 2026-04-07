@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import Seo from '../components/Seo';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 
 function AdminLoginPage() {
   const { login, isAuthenticated } = useAuth();
+  const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const [form, setForm] = useState({ username: '', password: '' });
-  const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (isAuthenticated) {
@@ -17,14 +18,29 @@ function AdminLoginPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
-    setError('');
+
+    if (!form.username.trim() || !form.password.trim()) {
+      toast.warning({
+        title: 'Admin sign-in is incomplete',
+        message: 'Please enter both your admin username and password before continuing.',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       await login(form);
+      toast.success({
+        title: 'Welcome back',
+        message: 'The admin dashboard is ready for you.',
+      });
       navigate(location.state?.from?.pathname || '/admin/dashboard', { replace: true });
     } catch (loginError) {
-      setError(loginError.message);
+      toast.error({
+        title: 'Admin sign-in failed',
+        message: loginError.message,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -47,17 +63,15 @@ function AdminLoginPage() {
               This route is intentionally separated from the public resident homepage. Only administrators managing resident records, transfers, balances, and posted payments should use it.
             </p>
 
-            <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
+            <form className="mt-8 space-y-4" onSubmit={handleSubmit} noValidate>
               <label className="field-shell">
                 <span>Admin username</span>
-                <input value={form.username} onChange={(event) => setForm((current) => ({ ...current, username: event.target.value }))} required />
+                <input value={form.username} onChange={(event) => setForm((current) => ({ ...current, username: event.target.value }))} />
               </label>
               <label className="field-shell">
                 <span>Password</span>
-                <input type="password" value={form.password} onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))} required />
+                <input type="password" value={form.password} onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))} />
               </label>
-
-              {error ? <p className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
 
               <button type="submit" className="action-button action-button--primary w-full" disabled={isSubmitting}>
                 {isSubmitting ? 'Signing in...' : 'Enter admin dashboard'}

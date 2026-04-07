@@ -2,43 +2,81 @@ import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import ResidentChatWidget from './ResidentChatWidget';
 import PublicHeader from './PublicHeader';
+import { useToast } from '../context/ToastContext';
 import { getResidentChatThread, sendResidentChatMessage } from '../services/api';
 
 const RESIDENT_CHAT_WIDGET_STORAGE_KEY = 'hoa-resident-chat-widget';
 const MAX_CHAT_ATTACHMENT_BYTES = 2 * 1024 * 1024;
 const ALLOWED_CHAT_ATTACHMENT_TYPES = ['image/png', 'image/jpeg'];
+const DEFAULT_CHAT_SIZE = {
+  width: 300,
+  height: 465,
+};
+const MIN_CHAT_SIZE = {
+  width: 280,
+  height: 360,
+};
+const MINIMIZED_CHAT_WIDTH = 216;
 
-function getDefaultChatPosition() {
+function getViewportChatBounds() {
+  if (typeof window === 'undefined') {
+    return {
+      maxHeight: DEFAULT_CHAT_SIZE.height,
+      maxWidth: DEFAULT_CHAT_SIZE.width,
+    };
+  }
+
+  return {
+    maxWidth: Math.max(MIN_CHAT_SIZE.width, window.innerWidth - 24),
+    maxHeight: Math.max(MIN_CHAT_SIZE.height, window.innerHeight - 24),
+  };
+}
+
+function clampChatSize(size) {
+  const { maxWidth, maxHeight } = getViewportChatBounds();
+  const nextSize = size || DEFAULT_CHAT_SIZE;
+
+  return {
+    width: Math.min(Math.max(nextSize.width, MIN_CHAT_SIZE.width), maxWidth),
+    height: Math.min(Math.max(nextSize.height, MIN_CHAT_SIZE.height), maxHeight),
+  };
+}
+
+function getDefaultChatPosition(size = DEFAULT_CHAT_SIZE) {
   if (typeof window === 'undefined') {
     return { x: 24, y: 120 };
   }
 
-  const estimatedWidth = Math.min(384, window.innerWidth - 24);
-  const estimatedHeight = Math.min(620, window.innerHeight - 24);
+  const chatSize = clampChatSize(size);
 
   return {
-    x: Math.max(12, window.innerWidth - estimatedWidth - 20),
-    y: Math.max(12, window.innerHeight - estimatedHeight - 20),
+    x: Math.max(12, window.innerWidth - chatSize.width - 20),
+    y: Math.max(12, window.innerHeight - chatSize.height - 20),
   };
 }
 
-function clampChatPosition(position) {
+function clampChatPosition(position, size = DEFAULT_CHAT_SIZE, isMinimized = false) {
   if (typeof window === 'undefined') {
     return position || { x: 24, y: 120 };
   }
 
-  const estimatedWidth = Math.min(384, window.innerWidth - 24);
-  const estimatedHeight = Math.min(620, window.innerHeight - 24);
-  const nextPosition = position || getDefaultChatPosition();
+  const chatSize = isMinimized
+    ? {
+        width: Math.min(MINIMIZED_CHAT_WIDTH, Math.max(180, window.innerWidth - 24)),
+        height: 64,
+      }
+    : clampChatSize(size);
+  const nextPosition = position || getDefaultChatPosition(chatSize);
 
   return {
-    x: Math.min(Math.max(nextPosition.x, 12), Math.max(12, window.innerWidth - estimatedWidth - 12)),
-    y: Math.min(Math.max(nextPosition.y, 12), Math.max(12, window.innerHeight - estimatedHeight - 12)),
+    x: Math.min(Math.max(nextPosition.x, 12), Math.max(12, window.innerWidth - chatSize.width - 12)),
+    y: Math.min(Math.max(nextPosition.y, 12), Math.max(12, window.innerHeight - chatSize.height - 12)),
   };
 }
 
 function PublicLayout() {
   const location = useLocation();
+  const toast = useToast();
   const shouldShowHeader = location.pathname !== '/';
   const shouldShowChatLauncher = !location.pathname.startsWith('/hiyas-admin-access');
   const [isResidentChatOpen, setIsResidentChatOpen] = useState(false);
@@ -48,10 +86,18 @@ function PublicLayout() {
   const [residentChat, setResidentChat] = useState(null);
   const [residentChatMessage, setResidentChatMessage] = useState('');
   const [residentAttachmentImageFile, setResidentAttachmentImageFile] = useState(null);
-  const [residentChatError, setResidentChatError] = useState('');
   const [isResidentChatLoading, setIsResidentChatLoading] = useState(false);
   const [isResidentChatSending, setIsResidentChatSending] = useState(false);
-  const [residentChatPosition, setResidentChatPosition] = useState(() => getDefaultChatPosition());
+  const [residentChatPosition, setResidentChatPosition] = useState(() => getDefaultChatPosition(DEFAULT_CHAT_SIZE));
+  const [residentChatSize, setResidentChatSize] = useState(() => clampChatSize(DEFAULT_CHAT_SIZE));
+
+  function handleResidentChatSizeChange(nextSize) {
+    const clampedSize = clampChatSize(nextSize);
+    setResidentChatSize(clampedSize);
+    setResidentChatPosition((currentPosition) =>
+      clampChatPosition(currentPosition, clampedSize, isResidentChatMinimized)
+    );
+  }
 
   function resetResidentChatSession({ closeWidget = false } = {}) {
     setResidentChat(null);
@@ -59,7 +105,6 @@ function PublicLayout() {
     setConnectedResidentId('');
     setResidentChatMessage('');
     setResidentAttachmentImageFile(null);
-    setResidentChatError('');
     setIsResidentChatLoading(false);
     setIsResidentChatSending(false);
 
@@ -89,14 +134,15 @@ function PublicLayout() {
       setResidentChat(data);
       setResidentChatId(data.resident.residentCode);
       setConnectedResidentId(data.resident.residentCode);
-      setResidentChatError('');
     } catch (error) {
       if (!silent) {
         setResidentChat(null);
         setConnectedResidentId('');
+        toast.warning({
+          title: 'Resident chat unavailable',
+          message: error.message,
+        });
       }
-
-      setResidentChatError(error.message);
     } finally {
       if (!silent) {
         setIsResidentChatLoading(false);
@@ -115,16 +161,20 @@ function PublicLayout() {
 
     try {
       const parsedWidgetState = JSON.parse(savedWidgetState);
+      const nextSize = parsedWidgetState?.size ? clampChatSize(parsedWidgetState.size) : clampChatSize(DEFAULT_CHAT_SIZE);
 
       if (parsedWidgetState?.position) {
-        setResidentChatPosition(clampChatPosition(parsedWidgetState.position));
+        setResidentChatPosition(clampChatPosition(parsedWidgetState.position, nextSize, parsedWidgetState?.isMinimized));
       }
+
+      setResidentChatSize(nextSize);
 
       if (typeof parsedWidgetState?.isMinimized === 'boolean') {
         setIsResidentChatMinimized(parsedWidgetState.isMinimized);
       }
     } catch (_error) {
-      setResidentChatPosition(getDefaultChatPosition());
+      setResidentChatSize(clampChatSize(DEFAULT_CHAT_SIZE));
+      setResidentChatPosition(getDefaultChatPosition(DEFAULT_CHAT_SIZE));
     }
   }, []);
 
@@ -148,13 +198,18 @@ function PublicLayout() {
       JSON.stringify({
         isMinimized: isResidentChatMinimized,
         position: residentChatPosition,
+        size: residentChatSize,
       })
     );
-  }, [isResidentChatMinimized, residentChatPosition]);
+  }, [isResidentChatMinimized, residentChatPosition, residentChatSize]);
 
   useEffect(() => {
     function handleResize() {
-      setResidentChatPosition((currentPosition) => clampChatPosition(currentPosition));
+      const clampedSize = clampChatSize(residentChatSize);
+      setResidentChatSize(clampedSize);
+      setResidentChatPosition((currentPosition) =>
+        clampChatPosition(currentPosition, clampedSize, isResidentChatMinimized)
+      );
     }
 
     window.addEventListener('resize', handleResize);
@@ -162,11 +217,12 @@ function PublicLayout() {
     return () => {
       window.removeEventListener('resize', handleResize);
     };
-  }, []);
+  }, [isResidentChatMinimized, residentChatSize]);
 
   function openResidentChatWidget() {
     setIsResidentChatOpen(true);
     setIsResidentChatMinimized(false);
+    setResidentChatPosition((currentPosition) => clampChatPosition(currentPosition, residentChatSize, false));
 
     if (residentChatId && !residentChat && !isResidentChatLoading) {
       loadResidentChat(residentChatId, { silent: false });
@@ -178,7 +234,13 @@ function PublicLayout() {
   }
 
   function toggleResidentChatMinimized() {
-    setIsResidentChatMinimized((current) => !current);
+    setIsResidentChatMinimized((current) => {
+      const nextIsMinimized = !current;
+      setResidentChatPosition((currentPosition) =>
+        clampChatPosition(currentPosition, residentChatSize, nextIsMinimized)
+      );
+      return nextIsMinimized;
+    });
   }
 
   async function handleResidentChatConnect(event) {
@@ -205,9 +267,11 @@ function PublicLayout() {
       setResidentChat(data);
       setResidentChatMessage('');
       setResidentAttachmentImageFile(null);
-      setResidentChatError('');
     } catch (error) {
-      setResidentChatError(error.message);
+      toast.error({
+        title: 'Message not sent',
+        message: error.message,
+      });
     } finally {
       setIsResidentChatSending(false);
     }
@@ -223,20 +287,25 @@ function PublicLayout() {
 
     if (!ALLOWED_CHAT_ATTACHMENT_TYPES.includes(nextFile.type)) {
       setResidentAttachmentImageFile(null);
-      setResidentChatError('Only PNG and JPG images up to 2 MB are allowed for chat attachments.');
+      toast.warning({
+        title: 'Attachment not allowed',
+        message: 'Only PNG and JPG images up to 2 MB are allowed for chat attachments.',
+      });
       event.target.value = '';
       return;
     }
 
     if (nextFile.size > MAX_CHAT_ATTACHMENT_BYTES) {
       setResidentAttachmentImageFile(null);
-      setResidentChatError('Only PNG and JPG images up to 2 MB are allowed for chat attachments.');
+      toast.warning({
+        title: 'Attachment too large',
+        message: 'Only PNG and JPG images up to 2 MB are allowed for chat attachments.',
+      });
       event.target.value = '';
       return;
     }
 
     setResidentAttachmentImageFile(nextFile);
-    setResidentChatError('');
   }
 
   function clearResidentAttachment() {
@@ -261,11 +330,12 @@ function PublicLayout() {
         residentChat={residentChat}
         chatMessage={residentChatMessage}
         attachmentImageFile={residentAttachmentImageFile}
-        chatError={residentChatError}
         isChatLoading={isResidentChatLoading}
         isChatSending={isResidentChatSending}
         position={residentChatPosition}
+        size={residentChatSize}
         onPositionChange={setResidentChatPosition}
+        onSizeChange={handleResidentChatSizeChange}
         onResidentChatIdChange={setResidentChatId}
         onConnect={handleResidentChatConnect}
         onSend={handleResidentChatSend}
