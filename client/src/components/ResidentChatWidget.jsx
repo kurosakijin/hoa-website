@@ -3,16 +3,6 @@ import { Link } from 'react-router-dom';
 import ImagePreviewModal from './ImagePreviewModal';
 import { formatDate } from '../utils/format';
 
-function getResidentInitials(name) {
-  return String(name || 'SH')
-    .split(/\s+/)
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-}
-
 function ResidentChatWidget({
   isOpen,
   isMinimized,
@@ -155,20 +145,8 @@ function ResidentChatWidget({
     >
       <div className="resident-chat-widget__header" onPointerDown={handleDragStart}>
         <div className="resident-chat-widget__identity">
-          <div className="resident-chat-widget__avatar">
-            {residentChat?.resident?.profileImageUrl ? (
-              <img
-                src={residentChat.resident.profileImageUrl}
-                alt={residentChat.resident.fullName}
-                className="resident-chat-widget__avatar-image"
-              />
-            ) : (
-              <span>{getResidentInitials(residentChat?.resident?.fullName || 'Sitio Hiyas')}</span>
-            )}
-          </div>
-
           <div className="min-w-0">
-            <p className="resident-chat-widget__title">Sitio Hiyas Chat</p>
+            <p className="resident-chat-widget__title">Chat with Sitio Hiyas Admin</p>
             <p className="resident-chat-widget__subtitle">
               {residentChat?.adminPresence?.isOnline ? 'Admin online' : 'Admin offline'}
             </p>
@@ -198,7 +176,12 @@ function ResidentChatWidget({
       {!isMinimized ? (
         <div className="resident-chat-widget__body">
           <div className="resident-chat-widget__status">
-            <span className={`status-tag ${residentChat?.adminPresence?.isOnline ? '' : 'status-tag--danger'}`}>
+            <span
+              className={`resident-chat-widget__presence ${
+                residentChat?.adminPresence?.isOnline ? '' : 'resident-chat-widget__presence--offline'
+              }`}
+            >
+              <span className="resident-chat-widget__presence-dot" />
               {residentChat?.adminPresence?.isOnline ? 'Admin online' : 'Admin offline'}
             </span>
             {residentChat?.adminPresence?.lastSeenAt ? (
@@ -236,24 +219,9 @@ function ResidentChatWidget({
 
           {residentChat?.resident ? (
             <>
-              <div className="resident-chat-widget__profile">
-                <div className="resident-chat-widget__avatar resident-chat-widget__avatar--large">
-                  {residentChat.resident.profileImageUrl ? (
-                    <img
-                      src={residentChat.resident.profileImageUrl}
-                      alt={residentChat.resident.fullName}
-                      className="resident-chat-widget__avatar-image"
-                    />
-                  ) : (
-                    <span>{getResidentInitials(residentChat.resident.fullName)}</span>
-                  )}
-                </div>
-
-                <div className="min-w-0">
-                  <p className="resident-chat-widget__resident-name">{residentChat.resident.fullName}</p>
-                  <p className="resident-chat-widget__resident-code">{residentChat.resident.residentCode}</p>
-                </div>
-              </div>
+              <p className="resident-chat-widget__thread-note">
+                Your conversation stays here while you browse the resident pages. Only the messages are shown in the thread.
+              </p>
 
               {residentChat.thread?.isAdminTyping ? (
                 <div className="chat-typing-indicator">
@@ -270,7 +238,6 @@ function ResidentChatWidget({
                       className={`chat-message ${chatItem.senderRole === 'resident' ? 'chat-message--self' : ''}`}
                     >
                       <div className="chat-message__bubble">
-                        <p className="chat-message__sender">{chatItem.senderName}</p>
                         {chatItem.attachmentImageUrl ? (
                           <button
                             type="button"
