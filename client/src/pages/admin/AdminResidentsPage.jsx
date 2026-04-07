@@ -194,6 +194,7 @@ function AdminResidentsPage() {
               const residentStatus = getResidentStatus(resident);
               const residentHasLockedLots = getLockedLotCount(resident) > 0;
               const residentHasTransferableLots = hasTransferableLots(resident);
+              const activeLots = resident.lots.filter((lot) => lot.isActive !== false);
               const transferTitle = residentHasTransferableLots
                 ? 'Transfer an unpaid assigned lot to a new resident.'
                 : residentHasLockedLots
@@ -202,78 +203,93 @@ function AdminResidentsPage() {
 
               return (
                 <article key={resident.id} className="resident-directory-card resident-directory-card--list">
-                <div className="resident-directory-card__identity">
-                  <div className="resident-directory-card__avatar resident-directory-card__avatar--image">
-                    {resident.profileImageUrl ? (
-                      <img src={resident.profileImageUrl} alt={resident.fullName} className="resident-directory-card__avatar-image" />
-                    ) : (
-                      <span>{getResidentInitials(resident)}</span>
-                    )}
+                  <div className="resident-directory-card__header">
+                    <div className="resident-directory-card__identity">
+                      <div className="resident-directory-card__avatar resident-directory-card__avatar--image">
+                        {resident.profileImageUrl ? (
+                          <img src={resident.profileImageUrl} alt={resident.fullName} className="resident-directory-card__avatar-image" />
+                        ) : (
+                          <span>{getResidentInitials(resident)}</span>
+                        )}
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="resident-directory-card__eyebrow">Resident record</p>
+                        <h3 className="resident-directory-card__name">{formatResidentSortableName(resident)}</h3>
+                        <p className="resident-directory-card__sub">{resident.residentCode}</p>
+                      </div>
+                    </div>
+
+                    <div className="resident-directory-card__header-side">
+                      <span className={residentStatus.className}>{residentStatus.label}</span>
+                      <p className="resident-directory-card__header-note">
+                        {activeLots.length} assigned lot{activeLots.length > 1 ? 's' : ''}
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="min-w-0">
-                    <p className="resident-directory-card__eyebrow">Resident record</p>
-                    <h3 className="resident-directory-card__name">{formatResidentSortableName(resident)}</h3>
-                    <p className="resident-directory-card__sub">{resident.residentCode}</p>
-                  </div>
-                </div>
+                  <ul className="resident-directory-card__detail-list">
+                    <li className="resident-directory-card__detail-item">
+                      <span className="resident-directory-card__detail-label">Contact number</span>
+                      <strong className="resident-directory-card__detail-value">{resident.contactNumber}</strong>
+                    </li>
+                    <li className="resident-directory-card__detail-item resident-directory-card__detail-item--wide">
+                      <span className="resident-directory-card__detail-label">Address</span>
+                      <strong className="resident-directory-card__detail-value resident-directory-card__address">{resident.address}</strong>
+                    </li>
+                    <li className="resident-directory-card__detail-item">
+                      <span className="resident-directory-card__detail-label">Assigned lots</span>
+                      <div className="resident-directory-card__lot-list resident-directory-card__lot-list--stacked">
+                        {activeLots.map((lot) => (
+                          <span key={lot.id} className="resident-directory-card__lot-chip resident-directory-card__lot-chip--block">
+                            Block {lot.block} / Lot {lot.lotNumber}
+                          </span>
+                        ))}
+                      </div>
+                    </li>
+                    <li className="resident-directory-card__detail-item">
+                      <span className="resident-directory-card__detail-label">Remaining balance</span>
+                      <strong className="resident-directory-card__detail-value">{formatCurrency(resident.remainingBalance)}</strong>
+                    </li>
+                    <li className="resident-directory-card__detail-item">
+                      <span className="resident-directory-card__detail-label">Total balance</span>
+                      <strong className="resident-directory-card__detail-value">{formatCurrency(resident.totalBalance)}</strong>
+                    </li>
+                  </ul>
 
-                <div className="resident-directory-card__meta resident-directory-card__meta--list">
-                  <div className="resident-directory-card__meta-item">
-                    <span>Contact number</span>
-                    <strong>{resident.contactNumber}</strong>
-                  </div>
-                  <div className="resident-directory-card__meta-item">
-                    <span>Address</span>
-                    <strong className="resident-directory-card__address">{resident.address}</strong>
-                  </div>
-                  <div className="resident-directory-card__meta-item">
-                    <span>Assigned lots</span>
-                    <strong className="resident-directory-card__lot-inline">
-                      {resident.lots.map((lot) => `Block ${lot.block} / Lot ${lot.lotNumber}`).join(', ')}
-                    </strong>
-                  </div>
-                </div>
+                  <div className="resident-directory-card__footer">
+                    <p className="resident-directory-card__footer-note">
+                      Review the resident record, update profile details, transfer an unpaid lot, or forfeit an unpaid assignment.
+                    </p>
 
-                <div className="resident-directory-card__balances resident-directory-card__balances--list">
-                  <div className="resident-directory-card__balance">
-                    <span>Remaining balance</span>
-                    <strong>{formatCurrency(resident.remainingBalance)}</strong>
+                    <div className="resident-directory-card__actions resident-directory-card__actions--list">
+                      <button type="button" className="table-action" onClick={() => setEditingResident(resident)}>
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="table-action"
+                        onClick={() => setTransferResidentTarget(resident)}
+                        disabled={!residentHasTransferableLots}
+                        title={transferTitle}
+                      >
+                        Transfer
+                      </button>
+                      <button
+                        type="button"
+                        className="table-action table-action--danger"
+                        onClick={() => handleDelete(resident.id)}
+                        disabled={residentHasLockedLots}
+                        title={
+                          residentHasLockedLots
+                            ? 'Residents with fully paid lots are locked and cannot be forfeited.'
+                            : 'Forfeit this resident record and delete the linked payment history.'
+                        }
+                      >
+                        Forfeit
+                      </button>
+                    </div>
                   </div>
-                  <div className="resident-directory-card__balance">
-                    <span>Total balance</span>
-                    <strong>{formatCurrency(resident.totalBalance)}</strong>
-                  </div>
-                </div>
-
-                <div className="resident-directory-card__actions resident-directory-card__actions--list">
-                  <span className={residentStatus.className}>{residentStatus.label}</span>
-                  <button type="button" className="table-action" onClick={() => setEditingResident(resident)}>
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="table-action"
-                    onClick={() => setTransferResidentTarget(resident)}
-                    disabled={!residentHasTransferableLots}
-                    title={transferTitle}
-                  >
-                    Transfer
-                  </button>
-                  <button
-                    type="button"
-                    className="table-action table-action--danger"
-                    onClick={() => handleDelete(resident.id)}
-                    disabled={residentHasLockedLots}
-                    title={
-                      residentHasLockedLots
-                        ? 'Residents with fully paid lots are locked and cannot be forfeited.'
-                        : 'Forfeit this resident record and delete the linked payment history.'
-                    }
-                  >
-                    Forfeit
-                  </button>
-                </div>
                 </article>
               );
             })}
