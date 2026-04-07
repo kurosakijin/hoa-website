@@ -41,7 +41,7 @@ function clampChatPosition(position) {
 function PublicLayout() {
   const location = useLocation();
   const shouldShowHeader = location.pathname !== '/';
-  const shouldShowChatLauncher = location.pathname !== '/' && !location.pathname.startsWith('/hiyas-admin-access');
+  const shouldShowChatLauncher = !location.pathname.startsWith('/hiyas-admin-access');
   const [isResidentChatOpen, setIsResidentChatOpen] = useState(false);
   const [isResidentChatMinimized, setIsResidentChatMinimized] = useState(false);
   const [residentChatId, setResidentChatId] = useState('');
@@ -90,10 +90,12 @@ function PublicLayout() {
     const savedResidentId = window.localStorage.getItem(RESIDENT_CHAT_STORAGE_KEY);
     const savedWidgetState = window.localStorage.getItem(RESIDENT_CHAT_WIDGET_STORAGE_KEY);
 
-    if (!savedResidentId) {
-      setResidentChatId('');
-    } else {
+    if (savedResidentId) {
       setResidentChatId(savedResidentId);
+      setConnectedResidentId(savedResidentId);
+      loadResidentChat(savedResidentId, { silent: true });
+    } else {
+      setResidentChatId('');
     }
 
     if (!savedWidgetState) {
