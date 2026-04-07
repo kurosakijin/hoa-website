@@ -1,4 +1,6 @@
 const express = require('express');
+const { chatAttachmentUpload } = require('../middleware/upload');
+const { parseRequestPayload } = require('../utils/requestPayload');
 const {
   clearAdminTyping,
   clearAdminPresence,
@@ -11,6 +13,17 @@ const {
 } = require('../services/chatService');
 
 const router = express.Router();
+
+function uploadAdminChatAttachment(request, response, next) {
+  chatAttachmentUpload.single('attachmentImage')(request, response, (error) => {
+    if (error?.name === 'MulterError' && error?.code === 'LIMIT_FILE_SIZE') {
+      error.statusCode = 400;
+      error.message = 'Only PNG and JPG images up to 2 MB are allowed for chat attachments.';
+    }
+
+    next(error);
+  });
+}
 
 router.get('/threads', async (_request, response, next) => {
   try {
@@ -28,10 +41,14 @@ router.get('/thread', async (request, response, next) => {
   }
 });
 
-router.post('/message', async (request, response, next) => {
+router.post('/message', uploadAdminChatAttachment, async (request, response, next) => {
   try {
+    const payload = parseRequestPayload(request);
+
     return response.status(201).json(
-      await sendAdminChatMessage(request.body?.threadId, request.body?.message, request.admin)
+      await sendAdminChatMessage(payload?.threadId, payload?.message, request.admin, {
+        attachmentImageFile: request.file,
+      })
     );
   } catch (error) {
     return next(error);

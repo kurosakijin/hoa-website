@@ -39,6 +39,7 @@ function clampChatPosition(position) {
 function PublicLayout() {
   const location = useLocation();
   const shouldShowHeader = location.pathname !== '/';
+  const shouldShowChatLauncher = location.pathname !== '/' && !location.pathname.startsWith('/hiyas-admin-access');
   const [isResidentChatOpen, setIsResidentChatOpen] = useState(false);
   const [isResidentChatMinimized, setIsResidentChatMinimized] = useState(false);
   const [residentChatId, setResidentChatId] = useState('');
@@ -224,6 +225,34 @@ function PublicLayout() {
         onClose={closeResidentChatWidget}
         onToggleMinimized={toggleResidentChatMinimized}
       />
+      {shouldShowChatLauncher && !isResidentChatOpen ? (
+        <button
+          type="button"
+          className="resident-chat-launcher"
+          onClick={openResidentChatWidget}
+          aria-label="Open resident chat"
+          title="Open resident chat"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" className="resident-chat-launcher__icon">
+            <path
+              d="M14.06 4.94h4a1 1 0 0 1 1 1v12.12a1 1 0 0 1-1 1H5.94a1 1 0 0 1-1-1V5.94a1 1 0 0 1 1-1h7.12"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M14.76 4.24a1.8 1.8 0 0 1 2.55 0l1.45 1.45a1.8 1.8 0 0 1 0 2.55l-7.66 7.66-3.43.88.88-3.43 7.66-7.66Z"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      ) : null}
     </div>
   );
 }

@@ -2,6 +2,7 @@ const Resident = require('../models/Resident');
 const ChatThread = require('../models/ChatThread');
 const AdminPresence = require('../models/AdminPresence');
 const { formatResidentFullName } = require('../utils/middleInitial');
+const { deleteImage, uploadImageBuffer } = require('../lib/cloudinary');
 
 const ADMIN_PRESENCE_KEY = 'primary';
 const ADMIN_ONLINE_WINDOW_MS = 90 * 1000;
@@ -19,6 +20,10 @@ function sanitizeMessageBody(value) {
   return trimValue(value).replace(/\s+/g, ' ');
 }
 
+function hasAttachmentFile(file) {
+  return Boolean(file?.buffer?.length);
+}
+
 function getResidentDisplayName(resident) {
   return formatResidentFullName(resident);
 }
@@ -31,12 +36,26 @@ function truncateMessagePreview(message) {
   return message.length > 120 ? `${message.slice(0, 117)}...` : message;
 }
 
+function buildLastMessagePreview(messageBody, hasAttachment) {
+  if (messageBody) {
+    return truncateMessagePreview(messageBody);
+  }
+
+  if (hasAttachment) {
+    return 'Sent an image attachment';
+  }
+
+  return '';
+}
+
 function toPlainMessage(message) {
   return {
     id: message._id.toString(),
     senderRole: message.senderRole,
     senderName: message.senderName,
     body: message.body,
+    attachmentImageUrl: message.attachmentImageUrl || '',
+    attachmentImageName: message.attachmentImageName || '',
     createdAt: message.createdAt.toISOString(),
   };
 }
@@ -229,7 +248,7 @@ async function sendResidentChatMessage(residentCode, body) {
     createdAt,
   });
   thread.lastMessageAt = createdAt;
-  thread.lastMessageText = truncateMessagePreview(messageBody);
+  thread.lastMessageText = buildLastMessagePreview(messageBody, false);
   thread.lastMessageSenderRole = 'resident';
   thread.unreadForAdmin = (thread.unreadForAdmin || 0) + 1;
   thread.unreadForResident = 0;
@@ -271,7 +290,7 @@ async function getAdminChatThread(threadId) {
   };
 }
 
-async function sendAdminChatMessage(threadId, body, admin) {
+async function sendAdminChatMessage(threadId, body, admin, options = {}) {
   const thread = await ChatThread.findById(threadId);
 
   if (!thread) {
@@ -279,24 +298,44 @@ async function sendAdminChatMessage(threadId, body, admin) {
   }
 
   const messageBody = sanitizeMessageBody(body);
+  const attachmentImageFile = options.attachmentImageFile;
+  const hasAttachment = hasAttachmentFile(attachmentImageFile);
 
-  if (!messageBody) {
-    throw new Error('Please enter a message before sending.');
+  if (!messageBody && !hasAttachment) {
+    throw new Error('Please enter a message or attach an image before sending.');
   }
 
+  let uploadedAttachment = null;
   const createdAt = new Date();
-  thread.messages.push({
-    senderRole: 'admin',
-    senderName: getAdminDisplayName(admin),
-    body: messageBody,
-    createdAt,
-  });
-  thread.lastMessageAt = createdAt;
-  thread.lastMessageText = truncateMessagePreview(messageBody);
-  thread.lastMessageSenderRole = 'admin';
-  thread.unreadForResident = (thread.unreadForResident || 0) + 1;
-  thread.unreadForAdmin = 0;
-  await thread.save();
+
+  try {
+    if (hasAttachment) {
+      uploadedAttachment = await uploadImageBuffer(attachmentImageFile, 'chat');
+    }
+
+    thread.messages.push({
+      senderRole: 'admin',
+      senderName: getAdminDisplayName(admin),
+      body: messageBody,
+      attachmentImageUrl: uploadedAttachment?.url || '',
+      attachmentImagePublicId: uploadedAttachment?.publicId || '',
+      attachmentImageName: trimValue(attachmentImageFile?.originalname),
+      attachmentImageMimeType: trimValue(attachmentImageFile?.mimetype),
+      createdAt,
+    });
+    thread.lastMessageAt = createdAt;
+    thread.lastMessageText = buildLastMessagePreview(messageBody, hasAttachment);
+    thread.lastMessageSenderRole = 'admin';
+    thread.unreadForResident = (thread.unreadForResident || 0) + 1;
+    thread.unreadForAdmin = 0;
+    await thread.save();
+  } catch (error) {
+    if (uploadedAttachment?.publicId) {
+      await deleteImage(uploadedAttachment.publicId).catch(() => {});
+    }
+
+    throw error;
+  }
 
   await AdminPresence.updateOne(
     { key: ADMIN_PRESENCE_KEY },
@@ -315,6 +354,16 @@ async function sendAdminChatMessage(threadId, body, admin) {
     adminPresence: await getAdminPresenceStatus(getAdminDisplayName(admin)),
     thread: toThreadDetail(thread),
   };
+}
+
+async function deleteThreadAttachments(thread) {
+  const attachmentPublicIds = (thread?.messages || [])
+    .map((message) => trimValue(message.attachmentImagePublicId))
+    .filter(Boolean);
+
+  await Promise.all(
+    attachmentPublicIds.map((publicId) => deleteImage(publicId).catch(() => {}))
+  );
 }
 
 async function recordAdminPresence(admin) {
@@ -398,6 +447,7 @@ async function clearChatThread(threadId, admin) {
     throw new Error('Chat thread was not found.');
   }
 
+  await deleteThreadAttachments(thread);
   await ChatThread.deleteOne({ _id: thread._id });
   await clearAdminTyping(thread._id.toString(), admin);
 
@@ -422,7 +472,14 @@ async function syncResidentChatThread(resident) {
 }
 
 async function deleteResidentChatThread(residentId) {
-  await ChatThread.deleteOne({ resident: residentId });
+  const thread = await ChatThread.findOne({ resident: residentId });
+
+  if (!thread) {
+    return;
+  }
+
+  await deleteThreadAttachments(thread);
+  await ChatThread.deleteOne({ _id: thread._id });
 }
 
 module.exports = {

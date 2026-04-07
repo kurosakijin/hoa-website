@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import ImagePreviewModal from '../../components/ImagePreviewModal';
 import { useAuth } from '../../context/AuthContext';
 import {
   clearAdminChatThread,
@@ -9,6 +10,9 @@ import {
   setAdminChatTyping,
 } from '../../services/api';
 import { formatDate } from '../../utils/format';
+
+const MAX_CHAT_ATTACHMENT_BYTES = 2 * 1024 * 1024;
+const ALLOWED_CHAT_ATTACHMENT_TYPES = ['image/png', 'image/jpeg'];
 
 function getResidentInitials(name) {
   return String(name || 'SH')
@@ -27,14 +31,17 @@ function AdminChatPage() {
   const [selectedThreadId, setSelectedThreadId] = useState('');
   const [selectedThread, setSelectedThread] = useState(null);
   const [message, setMessage] = useState('');
+  const [attachmentImageFile, setAttachmentImageFile] = useState(null);
   const [isThreadsLoading, setIsThreadsLoading] = useState(true);
   const [isThreadLoading, setIsThreadLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [error, setError] = useState('');
+  const [previewImage, setPreviewImage] = useState(null);
   const typingTimeoutRef = useRef(null);
   const selectedThreadIdRef = useRef('');
   const messagesEndRef = useRef(null);
+  const attachmentInputRef = useRef(null);
 
   async function loadThreads({ silent = false } = {}) {
     if (!silent) {
@@ -142,6 +149,11 @@ function AdminChatPage() {
     if (previousThreadId && previousThreadId !== selectedThreadId) {
       stopTyping(previousThreadId);
       setMessage('');
+      setAttachmentImageFile(null);
+
+      if (attachmentInputRef.current) {
+        attachmentInputRef.current.value = '';
+      }
     }
   }, [selectedThreadId]);
 
@@ -190,23 +202,66 @@ function AdminChatPage() {
   async function handleSendMessage(event) {
     event.preventDefault();
 
-    if (!selectedThreadId || !message.trim()) {
+    if (!selectedThreadId || (!message.trim() && !attachmentImageFile)) {
       return;
     }
 
     try {
       setIsSending(true);
       await stopTyping(selectedThreadId);
-      const data = await sendAdminChatMessage(token, selectedThreadId, { message });
+      const data = await sendAdminChatMessage(token, selectedThreadId, {
+        message,
+        attachmentImageFile,
+      });
       setSelectedThread(data.thread);
       setAdminPresence(data.adminPresence);
       setMessage('');
+      setAttachmentImageFile(null);
       setError('');
+
+      if (attachmentInputRef.current) {
+        attachmentInputRef.current.value = '';
+      }
+
       await loadThreads({ silent: true });
     } catch (sendError) {
       setError(sendError.message);
     } finally {
       setIsSending(false);
+    }
+  }
+
+  function handleAttachmentChange(event) {
+    const nextFile = event.target.files?.[0];
+
+    if (!nextFile) {
+      setAttachmentImageFile(null);
+      return;
+    }
+
+    if (!ALLOWED_CHAT_ATTACHMENT_TYPES.includes(nextFile.type)) {
+      setAttachmentImageFile(null);
+      setError('Only PNG and JPG images up to 2 MB are allowed for chat attachments.');
+      event.target.value = '';
+      return;
+    }
+
+    if (nextFile.size > MAX_CHAT_ATTACHMENT_BYTES) {
+      setAttachmentImageFile(null);
+      setError('Only PNG and JPG images up to 2 MB are allowed for chat attachments.');
+      event.target.value = '';
+      return;
+    }
+
+    setAttachmentImageFile(nextFile);
+    setError('');
+  }
+
+  function handleClearAttachment() {
+    setAttachmentImageFile(null);
+
+    if (attachmentInputRef.current) {
+      attachmentInputRef.current.value = '';
     }
   }
 
@@ -226,7 +281,13 @@ function AdminChatPage() {
       setSelectedThread(null);
       setSelectedThreadId('');
       setMessage('');
+      setAttachmentImageFile(null);
       setError('');
+
+      if (attachmentInputRef.current) {
+        attachmentInputRef.current.value = '';
+      }
+
       await loadThreads({ silent: true });
     } catch (clearError) {
       setError(clearError.message);
@@ -386,7 +447,31 @@ function AdminChatPage() {
                       >
                         <div className="chat-message__bubble">
                           <p className="chat-message__sender">{chatMessage.senderName}</p>
-                          <p className="chat-message__body">{chatMessage.body}</p>
+                          {chatMessage.attachmentImageUrl ? (
+                            <button
+                              type="button"
+                              className="chat-message__attachment-button"
+                              onClick={() =>
+                                setPreviewImage({
+                                  title: chatMessage.attachmentImageName || 'Chat attachment',
+                                  description: `Sent ${formatDate(chatMessage.createdAt)}`,
+                                  imageUrl: chatMessage.attachmentImageUrl,
+                                })
+                              }
+                            >
+                              <img
+                                src={chatMessage.attachmentImageUrl}
+                                alt={chatMessage.attachmentImageName || 'Chat attachment'}
+                                className="chat-message__attachment-image"
+                              />
+                            </button>
+                          ) : null}
+                          {chatMessage.attachmentImageName ? (
+                            <p className="chat-message__attachment-name">{chatMessage.attachmentImageName}</p>
+                          ) : null}
+                          {chatMessage.body ? (
+                            <p className="chat-message__body">{chatMessage.body}</p>
+                          ) : null}
                           <p className="chat-message__meta">{formatDate(chatMessage.createdAt)}</p>
                         </div>
                       </div>
@@ -415,11 +500,42 @@ function AdminChatPage() {
                       placeholder="Type your reply to the resident..."
                     />
                   </label>
+                  <div className="chat-composer-attachment">
+                    <div className="chat-composer-attachment__row">
+                      <label className="chat-composer-attachment__picker">
+                        <input
+                          ref={attachmentInputRef}
+                          type="file"
+                          accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+                          onChange={handleAttachmentChange}
+                        />
+                        <span>Attach image</span>
+                      </label>
+                      <p className="chat-composer-attachment__hint">PNG or JPG only, maximum 2 MB.</p>
+                    </div>
+
+                    {attachmentImageFile ? (
+                      <div className="chat-composer-attachment__meta">
+                        <p className="chat-composer-attachment__name">{attachmentImageFile.name}</p>
+                        <button
+                          type="button"
+                          className="chat-composer-attachment__clear"
+                          onClick={handleClearAttachment}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
                   <div className="admin-chat-messenger__composer-actions">
                     <span className="text-sm text-slate-400">
                       Residents will see your reply on their side almost immediately, and they can also see when you are typing.
                     </span>
-                    <button type="submit" className="action-button action-button--primary" disabled={isSending || !message.trim()}>
+                    <button
+                      type="submit"
+                      className="action-button action-button--primary"
+                      disabled={isSending || (!message.trim() && !attachmentImageFile)}
+                    >
                       {isSending ? 'Sending...' : 'Send reply'}
                     </button>
                   </div>
@@ -436,6 +552,13 @@ function AdminChatPage() {
           </div>
         </div>
       </section>
+      <ImagePreviewModal
+        isOpen={Boolean(previewImage)}
+        title={previewImage?.title || 'Chat attachment'}
+        description={previewImage?.description || 'Resident chat image attachment'}
+        imageUrl={previewImage?.imageUrl || ''}
+        onClose={() => setPreviewImage(null)}
+      />
     </div>
   );
 }

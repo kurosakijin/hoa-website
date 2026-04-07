@@ -31,7 +31,9 @@ function createApp() {
   app.use('/api/chat', requireAdmin, chatRoutes);
 
   app.use((error, _request, response, _next) => {
-    response.status(500).json({
+    const statusCode = error?.statusCode || (error?.name === 'MulterError' ? 400 : 500);
+
+    response.status(statusCode).json({
       message: error.message || 'Unexpected server error',
     });
   });

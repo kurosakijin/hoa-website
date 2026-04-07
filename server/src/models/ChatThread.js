@@ -14,7 +14,27 @@ const chatMessageSchema = new mongoose.Schema(
     },
     body: {
       type: String,
-      required: true,
+      default: '',
+      trim: true,
+    },
+    attachmentImageUrl: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    attachmentImagePublicId: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    attachmentImageName: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    attachmentImageMimeType: {
+      type: String,
+      default: '',
       trim: true,
     },
     createdAt: {

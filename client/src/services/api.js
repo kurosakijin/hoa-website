@@ -152,7 +152,12 @@ export function getAdminChatThread(token, threadId) {
 }
 
 export function sendAdminChatMessage(token, threadId, payload) {
-  return request(() => api.post('/chat/message', { threadId, ...payload }, authHeaders(token)));
+  const { attachmentImageFile, ...messagePayload } = payload || {};
+  const requestPayload = isFileLike(attachmentImageFile)
+    ? createMultipartPayload({ threadId, ...messagePayload }, [['attachmentImage', attachmentImageFile]])
+    : { threadId, ...messagePayload };
+
+  return request(() => api.post('/chat/message', requestPayload, authHeaders(token)));
 }
 
 export function clearAdminChatThread(token, threadId) {

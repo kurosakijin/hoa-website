@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import ImagePreviewModal from './ImagePreviewModal';
 import { formatDate } from '../utils/format';
 
 function getResidentInitials(name) {
@@ -33,46 +34,8 @@ function ResidentChatWidget({
   const widgetRef = useRef(null);
   const dragStateRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const [previewImage, setPreviewImage] = useState(null);
   const messageCount = residentChat?.thread?.messages?.length || 0;
-
-  useEffect(() => {
-    if (!isOpen) {
-      return undefined;
-    }
-
-    function handlePointerMove(event) {
-      if (!dragStateRef.current || !widgetRef.current) {
-        return;
-      }
-
-      const nextX = Math.min(
-        Math.max(event.clientX - dragStateRef.current.offsetX, 12),
-        window.innerWidth - dragStateRef.current.width - 12
-      );
-      const nextY = Math.min(
-        Math.max(event.clientY - dragStateRef.current.offsetY, 12),
-        window.innerHeight - dragStateRef.current.height - 12
-      );
-
-      onPositionChange({ x: nextX, y: nextY });
-    }
-
-    function handlePointerUp() {
-      dragStateRef.current = null;
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', handlePointerUp);
-    }
-
-    if (dragStateRef.current) {
-      window.addEventListener('pointermove', handlePointerMove);
-      window.addEventListener('pointerup', handlePointerUp);
-    }
-
-    return () => {
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', handlePointerUp);
-    };
-  }, [isOpen, onPositionChange]);
 
   useEffect(() => {
     if (!isOpen || isMinimized || !messagesEndRef.current) {
@@ -92,17 +55,80 @@ function ResidentChatWidget({
   function handleDragStart(event) {
     const target = event.target instanceof Element ? event.target : null;
 
-    if (event.button !== 0 || !widgetRef.current || target?.closest('button')) {
+    if (
+      (event.pointerType === 'mouse' && event.button !== 0) ||
+      !widgetRef.current ||
+      target?.closest('button') ||
+      target?.closest('a') ||
+      target?.closest('input') ||
+      target?.closest('textarea')
+    ) {
       return;
     }
 
     const rect = widgetRef.current.getBoundingClientRect();
+    const activePointerId = event.pointerId;
+    const currentTarget = event.currentTarget;
+
+    function handlePointerMove(moveEvent) {
+      if (!dragStateRef.current || moveEvent.pointerId !== activePointerId) {
+        return;
+      }
+
+      const nextX = Math.min(
+        Math.max(moveEvent.clientX - dragStateRef.current.offsetX, 12),
+        window.innerWidth - dragStateRef.current.width - 12
+      );
+      const nextY = Math.min(
+        Math.max(moveEvent.clientY - dragStateRef.current.offsetY, 12),
+        window.innerHeight - dragStateRef.current.height - 12
+      );
+
+      onPositionChange({ x: nextX, y: nextY });
+    }
+
+    function cleanupDrag() {
+      dragStateRef.current = null;
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
+
+      if (currentTarget?.releasePointerCapture) {
+        try {
+          currentTarget.releasePointerCapture(activePointerId);
+        } catch (_error) {
+          // Ignore release failures when the pointer is already gone.
+        }
+      }
+    }
+
+    function handlePointerUp(upEvent) {
+      if (upEvent.pointerId !== activePointerId) {
+        return;
+      }
+
+      cleanupDrag();
+    }
+
     dragStateRef.current = {
+      pointerId: activePointerId,
       offsetX: event.clientX - rect.left,
       offsetY: event.clientY - rect.top,
       width: rect.width,
       height: rect.height,
     };
+
+    if (currentTarget?.setPointerCapture) {
+      try {
+        currentTarget.setPointerCapture(activePointerId);
+      } catch (_error) {
+        // Ignore capture failures and continue with window listeners.
+      }
+    }
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
 
     onPositionChange({ x: rect.left, y: rect.top });
   }
@@ -235,7 +261,31 @@ function ResidentChatWidget({
                     >
                       <div className="chat-message__bubble">
                         <p className="chat-message__sender">{chatItem.senderName}</p>
-                        <p className="chat-message__body">{chatItem.body}</p>
+                        {chatItem.attachmentImageUrl ? (
+                          <button
+                            type="button"
+                            className="chat-message__attachment-button"
+                            onClick={() =>
+                              setPreviewImage({
+                                title: chatItem.attachmentImageName || 'Chat attachment',
+                                description: `Sent ${formatDate(chatItem.createdAt)}`,
+                                imageUrl: chatItem.attachmentImageUrl,
+                              })
+                            }
+                          >
+                            <img
+                              src={chatItem.attachmentImageUrl}
+                              alt={chatItem.attachmentImageName || 'Chat attachment'}
+                              className="chat-message__attachment-image"
+                            />
+                          </button>
+                        ) : null}
+                        {chatItem.attachmentImageName ? (
+                          <p className="chat-message__attachment-name">{chatItem.attachmentImageName}</p>
+                        ) : null}
+                        {chatItem.body ? (
+                          <p className="chat-message__body">{chatItem.body}</p>
+                        ) : null}
                         <p className="chat-message__meta">{formatDate(chatItem.createdAt)}</p>
                       </div>
                     </div>
@@ -282,6 +332,13 @@ function ResidentChatWidget({
           ) : null}
         </div>
       ) : null}
+      <ImagePreviewModal
+        isOpen={Boolean(previewImage)}
+        title={previewImage?.title || 'Chat attachment'}
+        description={previewImage?.description || 'Resident chat image attachment'}
+        imageUrl={previewImage?.imageUrl || ''}
+        onClose={() => setPreviewImage(null)}
+      />
     </div>
   );
 }
