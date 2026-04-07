@@ -3,6 +3,32 @@ import { Link } from 'react-router-dom';
 import ImagePreviewModal from './ImagePreviewModal';
 import { formatDate } from '../utils/format';
 
+function AttachmentIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="resident-chat-widget__icon">
+      <path
+        d="M8.5 12.5l6.6-6.6a3.5 3.5 0 115 5l-8.4 8.4a5.5 5.5 0 11-7.8-7.8l8.1-8.1"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.9"
+      />
+    </svg>
+  );
+}
+
+function SendIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="resident-chat-widget__icon">
+      <path
+        d="M5 4l14 8-14 8 3-8-3-8z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 function ResidentChatWidget({
   isOpen,
   isMinimized,
@@ -282,8 +308,20 @@ function ResidentChatWidget({
 
               <form className="resident-chat-widget__composer" onSubmit={onSend}>
                 <div className="resident-chat-widget__composer-row">
+                  <label className="chat-composer-attachment__picker chat-composer-attachment__picker--resident-icon">
+                    <input
+                      ref={attachmentInputRef}
+                      type="file"
+                      accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+                      onChange={onAttachmentImageChange}
+                    />
+                    <span aria-hidden="true">
+                      <AttachmentIcon />
+                    </span>
+                    <span className="sr-only">Attach image</span>
+                  </label>
                   <textarea
-                    rows="2"
+                    rows="1"
                     value={chatMessage}
                     onChange={(event) => onMessageChange(event.target.value)}
                     placeholder={
@@ -296,24 +334,12 @@ function ResidentChatWidget({
                     type="submit"
                     className="action-button action-button--primary resident-chat-widget__composer-submit"
                     disabled={isChatSending || (!chatMessage.trim() && !attachmentImageFile)}
+                    aria-label={isChatSending ? 'Sending message' : residentChat.adminPresence?.isOnline ? 'Send message' : 'Leave message'}
                   >
-                    {isChatSending ? 'Sending...' : residentChat.adminPresence?.isOnline ? 'Send' : 'Leave message'}
+                    <SendIcon />
                   </button>
                 </div>
                 <div className="chat-composer-attachment chat-composer-attachment--resident">
-                  <div className="chat-composer-attachment__row">
-                    <label className="chat-composer-attachment__picker">
-                      <input
-                        ref={attachmentInputRef}
-                        type="file"
-                        accept=".png,.jpg,.jpeg,image/png,image/jpeg"
-                        onChange={onAttachmentImageChange}
-                      />
-                      <span>Attach image</span>
-                    </label>
-                    <p className="chat-composer-attachment__hint">PNG or JPG only, maximum 2 MB.</p>
-                  </div>
-
                   {attachmentImageFile ? (
                     <div className="chat-composer-attachment__meta">
                       <p className="chat-composer-attachment__name">{attachmentImageFile.name}</p>
