@@ -8,3 +8,5 @@ client-dev.err.log
 server-dev.log
 server-dev.err.log
 server-live.err
+
+.vercel
