@@ -4,7 +4,6 @@ import ResidentChatWidget from './ResidentChatWidget';
 import PublicHeader from './PublicHeader';
 import { getResidentChatThread, sendResidentChatMessage } from '../services/api';
 
-const RESIDENT_CHAT_STORAGE_KEY = 'hoa-resident-chat-id';
 const RESIDENT_CHAT_WIDGET_STORAGE_KEY = 'hoa-resident-chat-widget';
 const MAX_CHAT_ATTACHMENT_BYTES = 2 * 1024 * 1024;
 const ALLOWED_CHAT_ATTACHMENT_TYPES = ['image/png', 'image/jpeg'];
@@ -54,6 +53,26 @@ function PublicLayout() {
   const [isResidentChatSending, setIsResidentChatSending] = useState(false);
   const [residentChatPosition, setResidentChatPosition] = useState(() => getDefaultChatPosition());
 
+  function resetResidentChatSession({ closeWidget = false } = {}) {
+    setResidentChat(null);
+    setResidentChatId('');
+    setConnectedResidentId('');
+    setResidentChatMessage('');
+    setResidentAttachmentImageFile(null);
+    setResidentChatError('');
+    setIsResidentChatLoading(false);
+    setIsResidentChatSending(false);
+
+    if (closeWidget) {
+      setIsResidentChatOpen(false);
+      setIsResidentChatMinimized(false);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('hoa-resident-chat-id');
+    }
+  }
+
   async function loadResidentChat(id, options = {}) {
     const { silent = false } = options;
 
@@ -71,7 +90,6 @@ function PublicLayout() {
       setResidentChatId(data.resident.residentCode);
       setConnectedResidentId(data.resident.residentCode);
       setResidentChatError('');
-      window.localStorage.setItem(RESIDENT_CHAT_STORAGE_KEY, data.resident.residentCode);
     } catch (error) {
       if (!silent) {
         setResidentChat(null);
@@ -87,16 +105,9 @@ function PublicLayout() {
   }
 
   useEffect(() => {
-    const savedResidentId = window.localStorage.getItem(RESIDENT_CHAT_STORAGE_KEY);
     const savedWidgetState = window.localStorage.getItem(RESIDENT_CHAT_WIDGET_STORAGE_KEY);
 
-    if (savedResidentId) {
-      setResidentChatId(savedResidentId);
-      setConnectedResidentId(savedResidentId);
-      loadResidentChat(savedResidentId, { silent: true });
-    } else {
-      setResidentChatId('');
-    }
+    window.localStorage.removeItem('hoa-resident-chat-id');
 
     if (!savedWidgetState) {
       return;
@@ -163,8 +174,7 @@ function PublicLayout() {
   }
 
   function closeResidentChatWidget() {
-    setIsResidentChatOpen(false);
-    setIsResidentChatMinimized(false);
+    resetResidentChatSession({ closeWidget: true });
   }
 
   function toggleResidentChatMinimized() {
