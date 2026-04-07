@@ -161,6 +161,12 @@ textarea {
   min-height: 100vh;
 }
 
+.public-shell h3,
+.admin-shell h3 {
+  font-size: clamp(1rem, 0.94rem + 0.34vw, 1.22rem);
+  line-height: 1.35;
+}
+
 .public-shell,
 .admin-shell {
   min-height: 100vh;
