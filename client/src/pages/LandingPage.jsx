@@ -88,9 +88,6 @@ function LandingPage() {
               <a href="#about" className="transition hover:text-[#fff8ee]">
                 About
               </a>
-              <a href="#resident" className="transition hover:text-[#fff8ee]">
-                Resident Page
-              </a>
             </div>
 
             <div className="flex items-center gap-3">
@@ -171,21 +168,6 @@ function LandingPage() {
               </div>
             </div>
           </aside>
-        </div>
-      </section>
-
-      <section id="resident" className="mx-auto max-w-5xl px-4 pb-16 lg:px-6">
-        <div className="surface-card p-8 text-center lg:p-10">
-          <p className="eyebrow">Resident page</p>
-          <h2 className="mt-4 text-4xl font-semibold text-white">Need your resident record, lot details, or payment history?</h2>
-          <p className="mx-auto mt-4 max-w-3xl text-base leading-8 text-slate-300">
-            The previous resident-focused landing content now lives on the resident page. Open that page to see occupancy visuals, resident guidance, and the path into your personal resident lookup.
-          </p>
-          <div className="mt-8 flex justify-center">
-            <Link to="/resident-page" className="action-button action-button--primary">
-              Open Resident Page
-            </Link>
-          </div>
         </div>
       </section>
     </main>

@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { heartbeatAdminChat, setAdminChatOffline } from '../services/api';
 import Seo from './Seo';
 import ThemeToggleButton from './ThemeToggleButton';
 
@@ -7,13 +9,33 @@ const adminNavItems = [
   { to: '/admin/dashboard', label: 'Dashboard' },
   { to: '/admin/residents', label: 'Residents' },
   { to: '/admin/payments', label: 'Payments' },
+  { to: '/admin/chat', label: 'Resident Chat' },
 ];
 
 function AdminLayout() {
-  const { admin, logout } = useAuth();
+  const { admin, logout, token } = useAuth();
   const navigate = useNavigate();
 
-  function handleLogout() {
+  useEffect(() => {
+    if (!token) {
+      return undefined;
+    }
+
+    heartbeatAdminChat(token).catch(() => {});
+    const intervalId = window.setInterval(() => {
+      heartbeatAdminChat(token).catch(() => {});
+    }, 30000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [token]);
+
+  async function handleLogout() {
+    if (token) {
+      await setAdminChatOffline(token).catch(() => {});
+    }
+
     logout();
     navigate('/hiyas-admin-access');
   }

@@ -16,6 +16,10 @@ const {
   formatResidentSortableName,
 } = require('../utils/middleInitial');
 const { uploadImageBuffer, deleteImage } = require('../lib/cloudinary');
+const {
+  deleteResidentChatThread,
+  syncResidentChatThread,
+} = require('./chatService');
 
 const PAYMENT_TYPES = ['Monthly Dues', 'Advance Pay'];
 const PAYMENT_METHODS = ['Land Bank', 'BDO', 'Bank Transfer', 'GCash', 'Cash'];
@@ -720,6 +724,7 @@ async function createResident(payload, options = {}) {
   }
 
   const resident = await Resident.create(normalized);
+  await syncResidentChatThread(resident);
   return toResidentSummary(resident);
 }
 
@@ -798,6 +803,8 @@ async function updateResident(residentId, payload, options = {}) {
   if (uploadedProfileImage && previousProfileImagePublicId && previousProfileImagePublicId !== uploadedProfileImage.publicId) {
     await deleteImage(previousProfileImagePublicId);
   }
+
+  await syncResidentChatThread(resident);
 
   await Promise.all(
     resident.lots.map((lot) =>
@@ -907,6 +914,14 @@ async function transferResidentLot(residentId, payload) {
   }
 
   await recalculateLotBalance(nextResident._id, migratedLot._id);
+  await syncResidentChatThread(nextResident);
+
+  if (sourceResident.lots.length === 0) {
+    await deleteResidentChatThread(sourceResident._id);
+  } else {
+    await syncResidentChatThread(sourceResident);
+  }
+
   return toResidentSummary(nextResident);
 }
 
@@ -928,6 +943,7 @@ async function deleteResident(residentId) {
   await Payment.deleteMany({ resident: resident._id });
   await deleteImage(resident.profileImagePublicId);
   await resident.deleteOne();
+  await deleteResidentChatThread(resident._id);
 }
 
 async function listPaymentLots() {

@@ -9,6 +9,7 @@ import ResidentLookupPage from './pages/ResidentLookupPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminPaymentsPage from './pages/admin/AdminPaymentsPage';
 import AdminResidentsPage from './pages/admin/AdminResidentsPage';
+import AdminChatPage from './pages/admin/AdminChatPage';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
           <Route path="dashboard" element={<AdminDashboardPage />} />
           <Route path="residents" element={<AdminResidentsPage />} />
           <Route path="payments" element={<AdminPaymentsPage />} />
+          <Route path="chat" element={<AdminChatPage />} />
         </Route>
       </Route>
     </Routes>

@@ -134,3 +134,31 @@ export function searchResidentById(residentId) {
 export function getPublicOccupancySummary() {
   return request(() => api.get('/public/occupancy-summary'));
 }
+
+export function getResidentChatThread(residentId) {
+  return request(() => api.get('/public/chat/thread', { params: { residentId } }));
+}
+
+export function sendResidentChatMessage(payload) {
+  return request(() => api.post('/public/chat/messages', payload));
+}
+
+export function getAdminChatThreads(token) {
+  return request(() => api.get('/chat/threads', authHeaders(token)));
+}
+
+export function getAdminChatThread(token, threadId) {
+  return request(() => api.get(`/chat/threads/${threadId}`, authHeaders(token)));
+}
+
+export function sendAdminChatMessage(token, threadId, payload) {
+  return request(() => api.post(`/chat/threads/${threadId}/messages`, payload, authHeaders(token)));
+}
+
+export function heartbeatAdminChat(token) {
+  return request(() => api.post('/chat/presence/heartbeat', {}, authHeaders(token)));
+}
+
+export function setAdminChatOffline(token) {
+  return request(() => api.post('/chat/presence/offline', {}, authHeaders(token)));
+}
