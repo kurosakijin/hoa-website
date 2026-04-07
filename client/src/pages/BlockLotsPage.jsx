@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Seo from '../components/Seo';
 import { useToast } from '../context/ToastContext';
 import { getPublicBlockLotStatus } from '../services/api';
@@ -12,6 +13,21 @@ function getLotStatusLabel(status) {
     default:
       return 'Available';
   }
+}
+
+function BackIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
+      <path
+        d="M14.5 5.5 8 12l6.5 6.5"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </svg>
+  );
 }
 
 function BlockLotsPage() {
@@ -115,6 +131,13 @@ function BlockLotsPage() {
           <p className="mt-4 max-w-4xl text-base leading-7 text-slate-300">
             Review which lots are available, occupied, or fully paid for every block. Hovering an occupied or fully paid lot shows only the resident last name and profile picture.
           </p>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link to="/resident-page" className="action-button action-button--primary gap-2">
+              <BackIcon />
+              Resident Page
+            </Link>
+          </div>
 
           <div className="lot-status-page__filters">
             <label className="field-shell">
