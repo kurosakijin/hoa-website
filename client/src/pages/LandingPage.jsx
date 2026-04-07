@@ -26,11 +26,14 @@ const publicFacts = [
 
 const heroBackdropStyle = {
   backgroundImage: [
-    'linear-gradient(180deg, rgba(22, 34, 13, 0.18), rgba(18, 24, 12, 0.7))',
-    'radial-gradient(circle at 14% 18%, rgba(126, 162, 89, 0.34), transparent 24%)',
-    'radial-gradient(circle at 26% 76%, rgba(87, 110, 55, 0.22), transparent 24%)',
-    'linear-gradient(118deg, rgba(88, 111, 52, 0.96) 0%, rgba(68, 55, 38, 0.94) 34%, rgba(60, 74, 48, 0.94) 66%, rgba(28, 36, 24, 0.98) 100%)',
+    'linear-gradient(180deg, rgba(18, 28, 12, 0.24), rgba(12, 17, 10, 0.78))',
+    'radial-gradient(circle at 18% 18%, rgba(126, 162, 89, 0.18), transparent 24%)',
+    'radial-gradient(circle at 72% 28%, rgba(164, 90, 61, 0.14), transparent 28%)',
+    'url("/homepage.jpg")',
   ].join(', '),
+  backgroundPosition: 'center center',
+  backgroundRepeat: 'no-repeat',
+  backgroundSize: 'cover',
 };
 
 function LandingPage() {
