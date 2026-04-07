@@ -9,14 +9,18 @@ import { ThemeProvider } from './context/ThemeContext';
 import './styles/tailwind.css';
 import './styles/main.scss';
 
+const enableVercelAnalytics = import.meta.env.PROD && import.meta.env.VITE_ENABLE_VERCEL_ANALYTICS === 'true';
+const enableVercelSpeedInsights =
+  import.meta.env.PROD && import.meta.env.VITE_ENABLE_VERCEL_SPEED_INSIGHTS === 'true';
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
           <App />
-          <Analytics />
-          <SpeedInsights />
+          {enableVercelAnalytics ? <Analytics /> : null}
+          {enableVercelSpeedInsights ? <SpeedInsights /> : null}
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>

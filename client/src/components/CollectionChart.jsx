@@ -16,7 +16,7 @@ function CollectionChart({ data }) {
         <h3 className="mt-2 font-display text-2xl text-white">Monthly dues trend</h3>
       </div>
       <div className="h-72">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={240}>
           <AreaChart data={data}>
             <defs>
               <linearGradient id="hoaCollection" x1="0" y1="0" x2="0" y2="1">

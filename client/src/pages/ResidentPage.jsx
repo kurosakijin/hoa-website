@@ -179,7 +179,7 @@ function ResidentPage() {
 
               {!occupancyError && !isLoadingSummary && occupancySummary.occupiedBlocks.length ? (
                 <div className="mt-5 h-72">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={240}>
                     <BarChart data={occupancySummary.occupiedBlocks}>
                       <CartesianGrid stroke="rgba(44, 62, 80, 0.12)" vertical={false} />
                       <XAxis dataKey="block" stroke="#768694" tickLine={false} axisLine={false} />

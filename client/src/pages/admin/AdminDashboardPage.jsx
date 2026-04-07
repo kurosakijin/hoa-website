@@ -64,7 +64,7 @@ function AdminDashboardPage() {
         </div>
 
         <div className="mt-6 h-72">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={240}>
             <AreaChart data={summary.monthlyCollections}>
               <defs>
                 <linearGradient id="adminHeroArea" x1="0" y1="0" x2="0" y2="1">
@@ -107,7 +107,7 @@ function AdminDashboardPage() {
           </div>
 
           <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
               <AreaChart data={summary.monthlyCollections}>
                 <defs>
                   <linearGradient id="dashboardArea" x1="0" y1="0" x2="0" y2="1">
@@ -191,7 +191,7 @@ function AdminDashboardPage() {
           </div>
 
           <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={240}>
               <BarChart
                 data={[
                   { label: 'Total billed', amount: summary.stats.totalBalance },
