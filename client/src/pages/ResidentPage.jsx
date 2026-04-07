@@ -8,7 +8,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { Link, useOutletContext } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import Seo from '../components/Seo';
 import { getPublicOccupancySummary } from '../services/api';
 
@@ -40,7 +40,6 @@ const lookupPreparation = [
 ];
 
 function ResidentPage() {
-  const { openResidentChatWidget } = useOutletContext();
   const [occupancySummary, setOccupancySummary] = useState({
     occupiedResidents: 0,
     occupiedLots: 0,
@@ -114,9 +113,6 @@ function ResidentPage() {
             <Link to="/find-my-resident-info" className="action-button action-button--primary">
               Find My Resident Info
             </Link>
-            <button type="button" className="action-button action-button--secondary" onClick={openResidentChatWidget}>
-              Chat with Admin
-            </button>
           </div>
 
           <div className="mt-10 grid gap-4 md:grid-cols-3">
@@ -253,15 +249,6 @@ function ResidentPage() {
             <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300">
               Open the Messenger-style chat popup to ask about your lot assignment, payment history, or resident record. The popup stays with you while you move around the public pages until you close it yourself.
             </p>
-          </div>
-
-          <div className="resident-chat-entry__actions">
-            <button type="button" className="action-button action-button--primary" onClick={openResidentChatWidget}>
-              Open Chat Popup
-            </button>
-            <Link to="/find-my-resident-info" className="action-button action-button--secondary">
-              Find My Resident Info
-            </Link>
           </div>
         </article>
       </section>

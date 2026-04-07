@@ -107,9 +107,12 @@ function LandingPage() {
                 This public landing page is now separated from the resident tools. It introduces the community, presents Sitio Hiyas as a real homeowners homepage, and points residents directly to their dedicated resident page when they need records or lot details.
               </p>
 
-              <div className="mt-8 flex justify-center">
+              <div className="mt-8 flex flex-wrap justify-center gap-3">
                 <Link to="/resident-page" className="action-button action-button--primary">
-                  Go to Resident Page
+                  Resident Guide
+                </Link>
+                <Link to="/find-my-resident-info" className="action-button action-button--secondary">
+                  Find My Resident Info
                 </Link>
               </div>
             </div>

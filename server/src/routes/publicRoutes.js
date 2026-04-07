@@ -1,11 +1,24 @@
 const express = require('express');
+const { chatAttachmentUpload } = require('../middleware/upload');
 const { getPublicOccupancySummary, searchResidentInformation } = require('../services/hoaService');
 const {
   getResidentChatThread,
   sendResidentChatMessage,
 } = require('../services/chatService');
+const { parseRequestPayload } = require('../utils/requestPayload');
 
 const router = express.Router();
+
+function uploadResidentChatAttachment(request, response, next) {
+  chatAttachmentUpload.single('attachmentImage')(request, response, (error) => {
+    if (error?.name === 'MulterError' && error?.code === 'LIMIT_FILE_SIZE') {
+      error.statusCode = 400;
+      error.message = 'Only PNG and JPG images up to 2 MB are allowed for chat attachments.';
+    }
+
+    next(error);
+  });
+}
 
 router.get('/occupancy-summary', async (_request, response, next) => {
   try {
@@ -39,11 +52,17 @@ router.get('/chat-thread', async (request, response, next) => {
   }
 });
 
-router.post('/chat-message', async (request, response, next) => {
+router.post('/chat-message', uploadResidentChatAttachment, async (request, response, next) => {
   try {
+    const payload = parseRequestPayload(request);
+
     return response
       .status(201)
-      .json(await sendResidentChatMessage(request.body?.residentId, request.body?.message));
+      .json(
+        await sendResidentChatMessage(payload?.residentId, payload?.message, {
+          attachmentImageFile: request.file,
+        })
+      );
   } catch (error) {
     return next(error);
   }

@@ -225,35 +225,54 @@ async function ensureResidentChatThread(resident) {
   return thread;
 }
 
-async function sendResidentChatMessage(residentCode, body) {
+async function sendResidentChatMessage(residentCode, body, options = {}) {
   const resident = await findResidentByCode(residentCode);
   const adminPresence = await getAdminPresenceStatus();
 
   const messageBody = sanitizeMessageBody(body);
+  const attachmentImageFile = options.attachmentImageFile;
+  const hasAttachment = hasAttachmentFile(attachmentImageFile);
 
-  if (!messageBody) {
-    throw new Error('Please enter a message before sending.');
+  if (!messageBody && !hasAttachment) {
+    throw new Error('Please enter a message or attach an image before sending.');
   }
 
   const thread = await ensureResidentChatThread(resident);
+  let uploadedAttachment = null;
   const createdAt = new Date();
 
-  thread.residentCode = resident.residentCode;
-  thread.residentName = getResidentDisplayName(resident);
-  thread.residentProfileImageUrl = resident.profileImageUrl || '';
-  thread.messages.push({
-    senderRole: 'resident',
-    senderName: getResidentDisplayName(resident),
-    body: messageBody,
-    createdAt,
-  });
-  thread.lastMessageAt = createdAt;
-  thread.lastMessageText = buildLastMessagePreview(messageBody, false);
-  thread.lastMessageSenderRole = 'resident';
-  thread.unreadForAdmin = (thread.unreadForAdmin || 0) + 1;
-  thread.unreadForResident = 0;
+  try {
+    if (hasAttachment) {
+      uploadedAttachment = await uploadImageBuffer(attachmentImageFile, 'chat');
+    }
 
-  await thread.save();
+    thread.residentCode = resident.residentCode;
+    thread.residentName = getResidentDisplayName(resident);
+    thread.residentProfileImageUrl = resident.profileImageUrl || '';
+    thread.messages.push({
+      senderRole: 'resident',
+      senderName: getResidentDisplayName(resident),
+      body: messageBody,
+      attachmentImageUrl: uploadedAttachment?.url || '',
+      attachmentImagePublicId: uploadedAttachment?.publicId || '',
+      attachmentImageName: trimValue(attachmentImageFile?.originalname),
+      attachmentImageMimeType: trimValue(attachmentImageFile?.mimetype),
+      createdAt,
+    });
+    thread.lastMessageAt = createdAt;
+    thread.lastMessageText = buildLastMessagePreview(messageBody, hasAttachment);
+    thread.lastMessageSenderRole = 'resident';
+    thread.unreadForAdmin = (thread.unreadForAdmin || 0) + 1;
+    thread.unreadForResident = 0;
+
+    await thread.save();
+  } catch (error) {
+    if (uploadedAttachment?.publicId) {
+      await deleteImage(uploadedAttachment.publicId).catch(() => {});
+    }
+
+    throw error;
+  }
 
   return {
     resident: toResidentChatIdentity(resident),

@@ -19,6 +19,7 @@ function ResidentChatWidget({
   residentChatId,
   residentChat,
   chatMessage,
+  attachmentImageFile,
   chatError,
   isChatLoading,
   isChatSending,
@@ -28,12 +29,15 @@ function ResidentChatWidget({
   onConnect,
   onSend,
   onMessageChange,
+  onAttachmentImageChange,
+  onAttachmentImageClear,
   onClose,
   onToggleMinimized,
 }) {
   const widgetRef = useRef(null);
   const dragStateRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const attachmentInputRef = useRef(null);
   const [previewImage, setPreviewImage] = useState(null);
   const messageCount = residentChat?.thread?.messages?.length || 0;
 
@@ -47,6 +51,12 @@ function ResidentChatWidget({
       block: 'end',
     });
   }, [isMinimized, isOpen, messageCount, residentChat?.thread?.isAdminTyping]);
+
+  useEffect(() => {
+    if (!attachmentImageFile && attachmentInputRef.current) {
+      attachmentInputRef.current.value = '';
+    }
+  }, [attachmentImageFile]);
 
   if (!isOpen) {
     return null;
@@ -314,10 +324,37 @@ function ResidentChatWidget({
                       : 'Admin is offline. Leave a message...'
                   }
                 />
+                <div className="chat-composer-attachment">
+                  <div className="chat-composer-attachment__row">
+                    <label className="chat-composer-attachment__picker">
+                      <input
+                        ref={attachmentInputRef}
+                        type="file"
+                        accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+                        onChange={onAttachmentImageChange}
+                      />
+                      <span>Attach image</span>
+                    </label>
+                    <p className="chat-composer-attachment__hint">PNG or JPG only, maximum 2 MB.</p>
+                  </div>
+
+                  {attachmentImageFile ? (
+                    <div className="chat-composer-attachment__meta">
+                      <p className="chat-composer-attachment__name">{attachmentImageFile.name}</p>
+                      <button
+                        type="button"
+                        className="chat-composer-attachment__clear"
+                        onClick={onAttachmentImageClear}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
                 <button
                   type="submit"
                   className="action-button action-button--primary"
-                  disabled={isChatSending || !chatMessage.trim()}
+                  disabled={isChatSending || (!chatMessage.trim() && !attachmentImageFile)}
                 >
                   {isChatSending ? 'Sending...' : residentChat.adminPresence?.isOnline ? 'Send' : 'Leave message'}
                 </button>

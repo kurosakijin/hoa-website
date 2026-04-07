@@ -140,7 +140,12 @@ export function getResidentChatThread(residentId) {
 }
 
 export function sendResidentChatMessage(payload) {
-  return request(() => api.post('/public/chat-message', payload));
+  const { attachmentImageFile, ...messagePayload } = payload || {};
+  const requestPayload = isFileLike(attachmentImageFile)
+    ? createMultipartPayload(messagePayload, [['attachmentImage', attachmentImageFile]])
+    : messagePayload;
+
+  return request(() => api.post('/public/chat-message', requestPayload));
 }
 
 export function getAdminChatThreads(token) {

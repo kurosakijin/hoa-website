@@ -6,6 +6,8 @@ import { getResidentChatThread, sendResidentChatMessage } from '../services/api'
 
 const RESIDENT_CHAT_STORAGE_KEY = 'hoa-resident-chat-id';
 const RESIDENT_CHAT_WIDGET_STORAGE_KEY = 'hoa-resident-chat-widget';
+const MAX_CHAT_ATTACHMENT_BYTES = 2 * 1024 * 1024;
+const ALLOWED_CHAT_ATTACHMENT_TYPES = ['image/png', 'image/jpeg'];
 
 function getDefaultChatPosition() {
   if (typeof window === 'undefined') {
@@ -46,6 +48,7 @@ function PublicLayout() {
   const [connectedResidentId, setConnectedResidentId] = useState('');
   const [residentChat, setResidentChat] = useState(null);
   const [residentChatMessage, setResidentChatMessage] = useState('');
+  const [residentAttachmentImageFile, setResidentAttachmentImageFile] = useState(null);
   const [residentChatError, setResidentChatError] = useState('');
   const [isResidentChatLoading, setIsResidentChatLoading] = useState(false);
   const [isResidentChatSending, setIsResidentChatSending] = useState(false);
@@ -176,7 +179,7 @@ function PublicLayout() {
   async function handleResidentChatSend(event) {
     event.preventDefault();
 
-    if (!connectedResidentId || !residentChatMessage.trim()) {
+    if (!connectedResidentId || (!residentChatMessage.trim() && !residentAttachmentImageFile)) {
       return;
     }
 
@@ -185,15 +188,47 @@ function PublicLayout() {
       const data = await sendResidentChatMessage({
         residentId: connectedResidentId,
         message: residentChatMessage,
+        attachmentImageFile: residentAttachmentImageFile,
       });
       setResidentChat(data);
       setResidentChatMessage('');
+      setResidentAttachmentImageFile(null);
       setResidentChatError('');
     } catch (error) {
       setResidentChatError(error.message);
     } finally {
       setIsResidentChatSending(false);
     }
+  }
+
+  function handleResidentAttachmentChange(event) {
+    const nextFile = event.target.files?.[0];
+
+    if (!nextFile) {
+      setResidentAttachmentImageFile(null);
+      return;
+    }
+
+    if (!ALLOWED_CHAT_ATTACHMENT_TYPES.includes(nextFile.type)) {
+      setResidentAttachmentImageFile(null);
+      setResidentChatError('Only PNG and JPG images up to 2 MB are allowed for chat attachments.');
+      event.target.value = '';
+      return;
+    }
+
+    if (nextFile.size > MAX_CHAT_ATTACHMENT_BYTES) {
+      setResidentAttachmentImageFile(null);
+      setResidentChatError('Only PNG and JPG images up to 2 MB are allowed for chat attachments.');
+      event.target.value = '';
+      return;
+    }
+
+    setResidentAttachmentImageFile(nextFile);
+    setResidentChatError('');
+  }
+
+  function clearResidentAttachment() {
+    setResidentAttachmentImageFile(null);
   }
 
   return (
@@ -213,6 +248,7 @@ function PublicLayout() {
         residentChatId={residentChatId}
         residentChat={residentChat}
         chatMessage={residentChatMessage}
+        attachmentImageFile={residentAttachmentImageFile}
         chatError={residentChatError}
         isChatLoading={isResidentChatLoading}
         isChatSending={isResidentChatSending}
@@ -222,6 +258,8 @@ function PublicLayout() {
         onConnect={handleResidentChatConnect}
         onSend={handleResidentChatSend}
         onMessageChange={setResidentChatMessage}
+        onAttachmentImageChange={handleResidentAttachmentChange}
+        onAttachmentImageClear={clearResidentAttachment}
         onClose={closeResidentChatWidget}
         onToggleMinimized={toggleResidentChatMinimized}
       />
