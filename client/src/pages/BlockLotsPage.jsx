@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Seo from '../components/Seo';
 import { useToast } from '../context/ToastContext';
 import { getPublicBlockLotStatus } from '../services/api';
@@ -25,6 +25,8 @@ function BlockLotsPage() {
     },
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedBlock, setSelectedBlock] = useState('all');
+  const [lotSearch, setLotSearch] = useState('');
 
   useEffect(() => {
     let isMounted = true;
@@ -65,6 +67,25 @@ function BlockLotsPage() {
     event.preventDefault();
   }
 
+  const filteredBlocks = useMemo(() => {
+    const normalizedLotSearch = lotSearch.trim().toLowerCase();
+
+    return statusSummary.blocks
+      .filter((block) => selectedBlock === 'all' || block.block === selectedBlock)
+      .map((block) => ({
+        ...block,
+        lots: normalizedLotSearch
+          ? block.lots.filter((lot) => String(lot.lotNumber).toLowerCase().includes(normalizedLotSearch))
+          : block.lots,
+      }))
+      .filter((block) => block.lots.length > 0);
+  }, [lotSearch, selectedBlock, statusSummary.blocks]);
+
+  const totalVisibleLots = useMemo(
+    () => filteredBlocks.reduce((sum, block) => sum + block.lots.length, 0),
+    [filteredBlocks]
+  );
+
   return (
     <>
       <Seo
@@ -94,6 +115,35 @@ function BlockLotsPage() {
           <p className="mt-4 max-w-4xl text-base leading-7 text-slate-300">
             Review which lots are available, occupied, or fully paid for every block. Hovering an occupied or fully paid lot shows only the resident last name and profile picture.
           </p>
+
+          <div className="lot-status-page__filters">
+            <label className="field-shell">
+              <span>Filter by block</span>
+              <select value={selectedBlock} onChange={(event) => setSelectedBlock(event.target.value)}>
+                <option value="all">All blocks</option>
+                {statusSummary.blocks.map((block) => (
+                  <option key={block.block} value={block.block}>
+                    Block {block.block}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="field-shell">
+              <span>Search lot number</span>
+              <input
+                value={lotSearch}
+                onChange={(event) => setLotSearch(event.target.value)}
+                placeholder="Type a lot number..."
+                inputMode="numeric"
+              />
+            </label>
+
+            <div className="lot-status-page__filter-note">
+              <strong>{isLoading ? '...' : `${totalVisibleLots} lots shown`}</strong>
+              <span>Narrow the board by block or search a specific lot number.</span>
+            </div>
+          </div>
 
           <div className="lot-status-page__legend">
             <div className="lot-status-page__legend-item">
@@ -129,15 +179,21 @@ function BlockLotsPage() {
             <div className="surface-card p-6 text-sm text-slate-300">No block and lot information is available yet.</div>
           ) : null}
 
+          {!isLoading && statusSummary.blocks.length && !filteredBlocks.length ? (
+            <div className="surface-card p-6 text-sm text-slate-300">
+              No lots matched the current block filter or lot-number search.
+            </div>
+          ) : null}
+
           {!isLoading
-            ? statusSummary.blocks.map((block) => (
+            ? filteredBlocks.map((block) => (
                 <article key={block.block} className="surface-card lot-status-block p-6">
                   <div className="lot-status-block__header">
                     <div>
                       <p className="eyebrow">Block {block.block}</p>
                       <h2 className="mt-2 text-2xl font-semibold text-white">Lot status list</h2>
                     </div>
-                    <span className="status-tag status-tag--violet">{block.lots.length} lots</span>
+                    <span className="status-tag status-tag--violet">{block.lots.length} visible lots</span>
                   </div>
 
                   <div className="lot-status-block__row">
