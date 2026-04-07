@@ -1,6 +1,6 @@
-const createApp = require('../server/src/app');
-const { connectDatabase } = require('../server/src/lib/db');
-const { ensureDatabaseSeeded } = require('../server/src/services/hoaService');
+const createApp = require('./server/src/app');
+const { connectDatabase } = require('./server/src/lib/db');
+const { ensureDatabaseSeeded } = require('./server/src/services/hoaService');
 
 let appInstance = null;
 let setupPromise = null;
