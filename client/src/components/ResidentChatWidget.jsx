@@ -314,46 +314,48 @@ function ResidentChatWidget({
               </div>
 
               <form className="resident-chat-widget__composer" onSubmit={onSend}>
-                <textarea
-                  rows="2"
-                  value={chatMessage}
-                  onChange={(event) => onMessageChange(event.target.value)}
-                  placeholder={
-                    residentChat.adminPresence?.isOnline
-                      ? 'Write a message...'
-                      : 'Admin is offline. Leave a message...'
-                  }
-                />
-                <div className="chat-composer-attachment">
-                  <div className="chat-composer-attachment__row">
-                    <label className="chat-composer-attachment__picker">
-                      <input
-                        ref={attachmentInputRef}
-                        type="file"
-                        accept=".png,.jpg,.jpeg,image/png,image/jpeg"
-                        onChange={onAttachmentImageChange}
-                      />
-                      <span>Attach image</span>
-                    </label>
-                    <p className="chat-composer-attachment__hint">PNG or JPG only, maximum 2 MB.</p>
-                  </div>
-
-                  {attachmentImageFile ? (
-                    <div className="chat-composer-attachment__meta">
-                      <p className="chat-composer-attachment__name">{attachmentImageFile.name}</p>
-                      <button
-                        type="button"
-                        className="chat-composer-attachment__clear"
-                        onClick={onAttachmentImageClear}
-                      >
-                        Remove
-                      </button>
+                <div className="resident-chat-widget__composer-main">
+                  <textarea
+                    rows="2"
+                    value={chatMessage}
+                    onChange={(event) => onMessageChange(event.target.value)}
+                    placeholder={
+                      residentChat.adminPresence?.isOnline
+                        ? 'Write a message...'
+                        : 'Admin is offline. Leave a message...'
+                    }
+                  />
+                  <div className="chat-composer-attachment chat-composer-attachment--resident">
+                    <div className="chat-composer-attachment__row">
+                      <label className="chat-composer-attachment__picker">
+                        <input
+                          ref={attachmentInputRef}
+                          type="file"
+                          accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+                          onChange={onAttachmentImageChange}
+                        />
+                        <span>Attach image</span>
+                      </label>
+                      <p className="chat-composer-attachment__hint">PNG or JPG only, maximum 2 MB.</p>
                     </div>
-                  ) : null}
+
+                    {attachmentImageFile ? (
+                      <div className="chat-composer-attachment__meta">
+                        <p className="chat-composer-attachment__name">{attachmentImageFile.name}</p>
+                        <button
+                          type="button"
+                          className="chat-composer-attachment__clear"
+                          onClick={onAttachmentImageClear}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
                 <button
                   type="submit"
-                  className="action-button action-button--primary"
+                  className="action-button action-button--primary resident-chat-widget__composer-submit"
                   disabled={isChatSending || (!chatMessage.trim() && !attachmentImageFile)}
                 >
                   {isChatSending ? 'Sending...' : residentChat.adminPresence?.isOnline ? 'Send' : 'Leave message'}

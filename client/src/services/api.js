@@ -135,6 +135,10 @@ export function getPublicOccupancySummary() {
   return request(() => api.get('/public/occupancy-summary'));
 }
 
+export function getPublicLandingPageContent() {
+  return request(() => api.get('/public/landing-page-content'));
+}
+
 export function getResidentChatThread(residentId) {
   return request(() => api.get('/public/chat-thread', { params: { residentId } }));
 }
@@ -183,4 +187,12 @@ export function heartbeatAdminChat(token) {
 
 export function setAdminChatOffline(token) {
   return request(() => api.post('/chat/presence-offline', {}, authHeaders(token)));
+}
+
+export function getAdminLandingPageContent(token) {
+  return request(() => api.get('/content/landing-page', authHeaders(token)));
+}
+
+export function updateAdminLandingPageContent(token, payload) {
+  return request(() => api.put('/content/landing-page', payload, authHeaders(token)));
 }

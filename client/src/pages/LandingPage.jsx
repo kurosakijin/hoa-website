@@ -1,6 +1,9 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Seo from '../components/Seo';
 import ThemeToggleButton from '../components/ThemeToggleButton';
+import { defaultLandingPageContent } from '../data/landingPageContent';
+import { getPublicLandingPageContent } from '../services/api';
 
 const publicFeatureCards = [
   {
@@ -37,6 +40,28 @@ const heroBackdropStyle = {
 };
 
 function LandingPage() {
+  const [content, setContent] = useState(defaultLandingPageContent);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getPublicLandingPageContent()
+      .then((data) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setContent({
+          ...defaultLandingPageContent,
+          ...(data.content || {}),
+        });
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <main className="pb-20">
@@ -76,20 +101,20 @@ function LandingPage() {
                 SH
               </span>
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#fff8ee]/80">Sitio Hiyas</p>
-                <p className="text-base font-semibold text-[#fff8ee]">Homeowners Association</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#fff8ee]/80">{content.brandShortName}</p>
+                <p className="text-base font-semibold text-[#fff8ee]">{content.brandFullName}</p>
               </div>
             </div>
 
             <div className="hidden items-center gap-6 text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[#fff8ee]/78 lg:flex">
               <a href="#home" className="transition hover:text-[#fff8ee]">
-                Home
+                {content.navHomeLabel}
               </a>
               <a href="#community" className="transition hover:text-[#fff8ee]">
-                Community
+                {content.navCommunityLabel}
               </a>
               <a href="#about" className="transition hover:text-[#fff8ee]">
-                About
+                {content.navAboutLabel}
               </a>
             </div>
 
@@ -101,21 +126,21 @@ function LandingPage() {
           <div className="grid min-h-[31rem] place-items-center px-4 py-16 text-center lg:px-6">
             <div className="max-w-3xl rounded-[2rem] border border-white/12 bg-black/20 px-6 py-10 shadow-[0_28px_70px_rgba(0,0,0,0.28)] backdrop-blur-sm sm:px-10">
               <p className="text-[0.72rem] font-semibold uppercase tracking-[0.32em] text-[#f1d9a0]">
-                Sitio Hiyas community welcome
+                {content.heroEyebrow}
               </p>
               <h1 className="mt-4 text-4xl font-semibold leading-tight text-[#fff8ee] lg:text-6xl">
-                Sitio Hiyas Homeowners Association
+                {content.heroTitle}
               </h1>
               <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-[#fff4e7]/84 sm:text-base">
-                This public landing page is now separated from the resident tools. It introduces the community, presents Sitio Hiyas as a real homeowners homepage, and points residents directly to their dedicated resident page when they need records or lot details.
+                {content.heroDescription}
               </p>
 
               <div className="mt-8 flex flex-wrap justify-center gap-3">
                 <Link to="/resident-page" className="action-button action-button--primary">
-                  Resident Guide
+                  {content.primaryCtaLabel}
                 </Link>
                 <Link to="/find-my-resident-info" className="action-button action-button--secondary">
-                  Find My Resident Info
+                  {content.secondaryCtaLabel}
                 </Link>
               </div>
             </div>
@@ -125,10 +150,10 @@ function LandingPage() {
 
       <section id="community" className="mx-auto max-w-7xl px-4 py-16 lg:px-6">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="eyebrow">Community overview</p>
-          <h2 className="mt-4 text-4xl font-semibold text-white">A public homepage that feels like a real subdivision website</h2>
+          <p className="eyebrow">{content.communityEyebrow}</p>
+          <h2 className="mt-4 text-4xl font-semibold text-white">{content.communityTitle}</h2>
           <p className="mt-4 text-base leading-7 text-slate-300">
-            The homepage now acts as the welcome area for Sitio Hiyas, while the previous resident-focused content lives on its own separate resident page. That keeps the public side cleaner and gives homeowners a clearer next step.
+            {content.communityDescription}
           </p>
         </div>
 
@@ -148,21 +173,21 @@ function LandingPage() {
       <section id="about" className="mx-auto max-w-7xl px-4 pb-16 lg:px-6">
         <div className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
           <article className="surface-card p-8 lg:p-10">
-            <p className="eyebrow">About</p>
-            <h2 className="mt-4 text-4xl font-semibold text-white">A cleaner front door for Sitio Hiyas</h2>
+            <p className="eyebrow">{content.aboutEyebrow}</p>
+            <h2 className="mt-4 text-4xl font-semibold text-white">{content.aboutTitle}</h2>
             <p className="mt-5 text-base leading-8 text-slate-300">
-              This refreshed homepage is designed to feel more like the public association websites you referenced: a strong hero, a clear identity for the subdivision, and separate resident tools instead of putting everything on the front page.
+              {content.aboutParagraphOne}
             </p>
             <p className="mt-4 text-base leading-8 text-slate-300">
-              Residents who need occupancy details, payment visibility, or resident search can move straight into the resident page, while public visitors can stay on this landing page to understand what Sitio Hiyas is about.
+              {content.aboutParagraphTwo}
             </p>
           </article>
 
           <aside className="surface-card relative overflow-hidden p-8 lg:p-10">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(136,176,75,0.2),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(164,90,61,0.18),transparent_32%)]" />
             <div className="relative">
-              <p className="eyebrow">Association details</p>
-              <h2 className="mt-4 text-4xl font-semibold text-white">Public details first, resident tools second</h2>
+              <p className="eyebrow">{content.detailsEyebrow}</p>
+              <h2 className="mt-4 text-4xl font-semibold text-white">{content.detailsTitle}</h2>
 
               <div className="mt-8 grid gap-4 sm:grid-cols-2">
                 {publicFacts.map((fact) => (

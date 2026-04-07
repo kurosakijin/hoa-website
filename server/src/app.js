@@ -7,6 +7,7 @@ const dashboardRoutes = require('./routes/dashboardRoutes');
 const authRoutes = require('./routes/authRoutes');
 const publicRoutes = require('./routes/publicRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const contentRoutes = require('./routes/contentRoutes');
 const { requireAdmin } = require('./middleware/auth');
 
 function createApp() {
@@ -29,6 +30,7 @@ function createApp() {
   app.use('/api/residents', requireAdmin, residentRoutes);
   app.use('/api/payments', requireAdmin, paymentRoutes);
   app.use('/api/chat', requireAdmin, chatRoutes);
+  app.use('/api/content', requireAdmin, contentRoutes);
 
   app.use((error, _request, response, _next) => {
     const statusCode = error?.statusCode || (error?.name === 'MulterError' ? 400 : 500);

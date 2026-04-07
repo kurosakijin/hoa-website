@@ -7,6 +7,7 @@ import LandingPage from './pages/LandingPage';
 import ResidentPage from './pages/ResidentPage';
 import ResidentLookupPage from './pages/ResidentLookupPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
+import AdminLandingPageEditor from './pages/admin/AdminLandingPageEditor';
 import AdminPaymentsPage from './pages/admin/AdminPaymentsPage';
 import AdminResidentsPage from './pages/admin/AdminResidentsPage';
 import AdminChatPage from './pages/admin/AdminChatPage';
@@ -26,6 +27,7 @@ function App() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboardPage />} />
+          <Route path="landing-page" element={<AdminLandingPageEditor />} />
           <Route path="residents" element={<AdminResidentsPage />} />
           <Route path="payments" element={<AdminPaymentsPage />} />
           <Route path="chat" element={<AdminChatPage />} />

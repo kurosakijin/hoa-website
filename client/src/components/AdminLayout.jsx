@@ -11,6 +11,7 @@ import ThemeToggleButton from './ThemeToggleButton';
 
 const adminNavItems = [
   { to: '/admin/dashboard', label: 'Dashboard' },
+  { to: '/admin/landing-page', label: 'Landing Page' },
   { to: '/admin/residents', label: 'Residents' },
   { to: '/admin/payments', label: 'Payments' },
   { to: '/admin/chat', label: 'Resident Chat' },

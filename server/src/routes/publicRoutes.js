@@ -1,6 +1,7 @@
 const express = require('express');
 const { chatAttachmentUpload } = require('../middleware/upload');
 const { getPublicOccupancySummary, searchResidentInformation } = require('../services/hoaService');
+const { getLandingPageContent } = require('../services/contentService');
 const {
   getResidentChatThread,
   sendResidentChatMessage,
@@ -23,6 +24,14 @@ function uploadResidentChatAttachment(request, response, next) {
 router.get('/occupancy-summary', async (_request, response, next) => {
   try {
     return response.json(await getPublicOccupancySummary());
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.get('/landing-page-content', async (_request, response, next) => {
+  try {
+    return response.json(await getLandingPageContent());
   } catch (error) {
     return next(error);
   }
