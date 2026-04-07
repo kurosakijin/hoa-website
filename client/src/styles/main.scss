@@ -610,6 +610,18 @@ textarea {
   }
 }
 
+.preview-stat--compact-copy {
+  strong {
+    font-size: 1rem;
+    line-height: 1.45;
+    margin-top: 0.4rem;
+  }
+
+  span {
+    font-size: 0.78rem;
+  }
+}
+
 .status-tag {
   align-items: center;
   background: var(--color-success-bg);

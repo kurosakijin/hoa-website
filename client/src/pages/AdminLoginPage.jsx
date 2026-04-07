@@ -74,7 +74,7 @@ function AdminLoginPage() {
               </div>
               <div className="info-chip">
                 <strong>Payment history by exact date</strong>
-                <span>Review payment entries, update mistakes, and keep every lot ledger current in MongoDB.</span>
+                <span>Review payment entries, update mistakes, and keep every lot ledger current in the database.</span>
               </div>
               <div className="info-chip">
                 <strong>Admin dashboard insights</strong>

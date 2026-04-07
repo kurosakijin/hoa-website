@@ -3,7 +3,6 @@ import ThemeToggleButton from './ThemeToggleButton';
 
 const publicNavItems = [
   { to: '/', label: 'Home', end: true },
-  { to: '/find-my-resident-info', label: 'Find My Resident Info' },
 ];
 
 function PublicHeader() {
@@ -35,9 +34,6 @@ function PublicHeader() {
 
         <div className="flex items-center gap-3">
           <ThemeToggleButton compact />
-          <NavLink to="/find-my-resident-info" className="action-button action-button--secondary">
-            Resident Lookup
-          </NavLink>
         </div>
       </div>
     </header>

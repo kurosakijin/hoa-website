@@ -153,7 +153,7 @@ function LandingPage() {
 
             <div className="grid gap-4 md:grid-cols-3">
               {residentServices.map((service) => (
-                <div key={service.label} className="preview-stat">
+                <div key={service.label} className="preview-stat preview-stat--compact-copy">
                   <span>{service.label}</span>
                   <strong>{service.value}</strong>
                 </div>
