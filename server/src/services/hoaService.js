@@ -15,6 +15,10 @@ const {
   formatResidentFullName,
   formatResidentSortableName,
 } = require('../utils/middleInitial');
+const {
+  getPaymentEvidenceLabel,
+  normalizePaymentMethod,
+} = require('../utils/paymentEvidence');
 const { uploadImageBuffer, deleteImage } = require('../lib/cloudinary');
 const {
   deleteResidentChatThread,
@@ -22,7 +26,6 @@ const {
 } = require('./chatService');
 
 const PAYMENT_TYPES = ['Monthly Dues', 'Advance Pay'];
-const PAYMENT_METHODS = ['Land Bank', 'BDO', 'Bank Transfer', 'GCash', 'Cash'];
 
 function trimValue(value) {
   return typeof value === 'string' ? value.trim() : value;
@@ -42,29 +45,6 @@ function assertPaymentAmountValid(value) {
 function normalizePaymentType(value) {
   const normalized = trimValue(value);
   return PAYMENT_TYPES.includes(normalized) ? normalized : 'Monthly Dues';
-}
-
-function normalizePaymentMethod(value) {
-  const normalized = trimValue(value);
-
-  if (PAYMENT_METHODS.includes(normalized)) {
-    return normalized;
-  }
-
-  switch (String(normalized).toLowerCase()) {
-    case 'check':
-      return 'Bank Transfer';
-    case 'landbank':
-      return 'Land Bank';
-    case 'bdo':
-      return 'BDO';
-    case 'gcash':
-      return 'GCash';
-    case 'cash':
-      return 'Cash';
-    default:
-      return 'Cash';
-  }
 }
 
 function normalizeLotInput(lot) {
@@ -184,6 +164,7 @@ function toPaymentSummary(payment) {
     amount: payment.amount,
     type: payment.type,
     method: payment.method,
+    evidenceLabel: getPaymentEvidenceLabel(payment.method),
     receiptImageUrl: payment.receiptImageUrl || '',
     notes: payment.notes,
     paymentDate: payment.paymentDate.toISOString(),

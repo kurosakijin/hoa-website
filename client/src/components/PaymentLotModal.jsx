@@ -4,9 +4,17 @@ import Modal from './Modal';
 import { useToast } from '../context/ToastContext';
 import { formatCurrency, formatDateOnly, toDateInputValue } from '../utils/format';
 import { formatResidentFullName } from '../utils/middleInitial';
+import {
+  getPaymentEvidenceActionLabel,
+  getPaymentEvidenceCurrentLabel,
+  getPaymentEvidenceEmptyLabel,
+  getPaymentEvidenceFieldLabel,
+  getPaymentEvidenceLabel,
+  getPaymentEvidencePreviewTitle,
+  PAYMENT_METHODS,
+} from '../utils/paymentEvidence';
 
 const PAYMENT_TYPES = ['Monthly Dues', 'Advance Pay'];
-const PAYMENT_METHODS = ['Land Bank', 'BDO', 'Bank Transfer', 'GCash', 'Cash'];
 
 function createPaymentForm(payment) {
   return {
@@ -50,6 +58,8 @@ function PaymentLotModal({
   const [receiptImagePreview, setReceiptImagePreview] = useState('');
   const [receiptPreviewModal, setReceiptPreviewModal] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const activeMethod = form.method || editingPayment?.method || 'Cash';
+  const activeEvidenceLabel = getPaymentEvidenceLabel(activeMethod);
 
   useEffect(() => {
     setEditingPayment(null);
@@ -110,7 +120,7 @@ function PaymentLotModal({
       toast.success({
         title: editingPayment ? 'Payment updated' : 'Payment recorded',
         message: editingPayment
-          ? 'The payment entry and receipt details were updated.'
+          ? `The payment entry and ${activeEvidenceLabel.toLowerCase()} details were updated.`
           : 'The payment entry was added to the resident ledger.',
       });
       setEditingPayment(null);
@@ -159,7 +169,7 @@ function PaymentLotModal({
       <Modal
         isOpen={isOpen}
         title="Lot payment details"
-        description="Review the assigned lot, post payments, update entries, upload receipts, and inspect exact payment dates from the resident ledger."
+        description="Review the assigned lot, post payments, upload proof of payment, and inspect exact payment dates from the resident ledger."
         onClose={onClose}
         wide
       >
@@ -259,7 +269,7 @@ function PaymentLotModal({
                     </select>
                   </label>
                   <label className="field-shell md:col-span-2">
-                    <span>Receipt or proof of payment</span>
+                    <span>{getPaymentEvidenceFieldLabel(activeMethod)}</span>
                     <input type="file" accept="image/*" onChange={handleReceiptImageChange} />
                   </label>
                   {(receiptImagePreview || editingPayment?.receiptImageUrl) ? (
@@ -267,13 +277,15 @@ function PaymentLotModal({
                       <div className="payment-receipt-preview__image-shell">
                         <img
                           src={receiptImagePreview || editingPayment?.receiptImageUrl}
-                          alt="Receipt preview"
+                          alt={`${activeEvidenceLabel} preview`}
                           className="payment-receipt-preview__image"
                         />
                       </div>
                       <div className="payment-receipt-preview__copy">
                         <p className="text-sm font-semibold text-white">
-                          {receiptImageFile ? `Selected receipt: ${receiptImageFile.name}` : 'Current saved receipt'}
+                          {receiptImageFile
+                            ? `Selected ${activeEvidenceLabel.toLowerCase()}: ${receiptImageFile.name}`
+                            : getPaymentEvidenceCurrentLabel(activeMethod)}
                         </p>
                         <p className="mt-2 text-sm text-slate-400">
                           This image will be stored on Cloudinary and can be viewed later from the resident payment history.
@@ -283,12 +295,14 @@ function PaymentLotModal({
                           className="table-action mt-3"
                           onClick={() =>
                             setReceiptPreviewModal({
-                              title: editingPayment ? 'Saved payment receipt' : 'Receipt preview',
+                              title: editingPayment
+                                ? `Saved ${activeEvidenceLabel.toLowerCase()}`
+                                : getPaymentEvidencePreviewTitle(activeMethod),
                               imageUrl: receiptImagePreview || editingPayment?.receiptImageUrl,
                             })
                           }
                         >
-                          Show receipt
+                          {getPaymentEvidenceActionLabel(activeMethod)}
                         </button>
                       </div>
                     </div>
@@ -321,7 +335,7 @@ function PaymentLotModal({
                       <th className="pb-3">Type</th>
                       <th className="pb-3">Method</th>
                       <th className="pb-3">Amount</th>
-                      <th className="pb-3">Receipt</th>
+                      <th className="pb-3">Evidence</th>
                       <th className="pb-3">Notes</th>
                       <th className="pb-3 text-right">Actions</th>
                     </tr>
@@ -340,15 +354,15 @@ function PaymentLotModal({
                               className="table-action"
                               onClick={() =>
                                 setReceiptPreviewModal({
-                                  title: `Receipt for ${formatDateOnly(payment.paymentDate)}`,
+                                  title: getPaymentEvidencePreviewTitle(payment.method, formatDateOnly(payment.paymentDate)),
                                   imageUrl: payment.receiptImageUrl,
                                 })
                               }
                             >
-                              Show receipt
+                              {getPaymentEvidenceActionLabel(payment.method)}
                             </button>
                           ) : (
-                            <span className="text-xs text-slate-500">No receipt</span>
+                            <span className="text-xs text-slate-500">{getPaymentEvidenceEmptyLabel(payment.method)}</span>
                           )}
                         </td>
                         <td className="py-4">{payment.notes || 'No notes'}</td>
@@ -378,8 +392,8 @@ function PaymentLotModal({
 
       <ImagePreviewModal
         isOpen={Boolean(receiptPreviewModal)}
-        title={receiptPreviewModal?.title || 'Receipt preview'}
-        description="Review the uploaded payment receipt or proof of payment."
+        title={receiptPreviewModal?.title || 'Payment evidence preview'}
+        description="Review the uploaded proof of payment."
         imageUrl={receiptPreviewModal?.imageUrl}
         onClose={() => setReceiptPreviewModal(null)}
       />

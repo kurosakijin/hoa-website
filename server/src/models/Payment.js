@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { PAYMENT_METHODS } = require('../utils/paymentEvidence');
 
 const paymentSchema = new mongoose.Schema(
   {
@@ -17,7 +18,7 @@ const paymentSchema = new mongoose.Schema(
     },
     method: {
       type: String,
-      enum: ['Land Bank', 'BDO', 'Bank Transfer', 'GCash', 'Cash'],
+      enum: PAYMENT_METHODS,
       required: true,
     },
     receiptImageUrl: { type: String, default: '', trim: true },

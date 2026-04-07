@@ -5,6 +5,11 @@ import { useToast } from '../context/ToastContext';
 import { searchResidentByDetails, searchResidentById } from '../services/api';
 import { formatCurrency, formatDateOnly } from '../utils/format';
 import { formatMiddleName, formatResidentFullName } from '../utils/middleInitial';
+import {
+  getPaymentEvidenceActionLabel,
+  getPaymentEvidenceEmptyLabel,
+  getPaymentEvidencePreviewTitle,
+} from '../utils/paymentEvidence';
 
 function getResidentInitials(resident) {
   return [resident.firstName?.[0], resident.lastName?.[0]].filter(Boolean).join('').toUpperCase() || 'SH';
@@ -230,7 +235,7 @@ function ResidentLookupPage() {
                               <th className="pb-3">Type</th>
                               <th className="pb-3">Method</th>
                               <th className="pb-3">Amount</th>
-                              <th className="pb-3">Receipt</th>
+                              <th className="pb-3">Evidence</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -247,15 +252,15 @@ function ResidentLookupPage() {
                                       className="table-action"
                                       onClick={() =>
                                         setReceiptPreviewModal({
-                                          title: `Receipt for ${formatDateOnly(payment.paymentDate)}`,
+                                          title: getPaymentEvidencePreviewTitle(payment.method, formatDateOnly(payment.paymentDate)),
                                           imageUrl: payment.receiptImageUrl,
                                         })
                                       }
                                     >
-                                      Show receipt
+                                      {getPaymentEvidenceActionLabel(payment.method)}
                                     </button>
                                   ) : (
-                                    <span className="text-xs text-slate-500">No receipt</span>
+                                    <span className="text-xs text-slate-500">{getPaymentEvidenceEmptyLabel(payment.method)}</span>
                                   )}
                                 </td>
                               </tr>
@@ -278,8 +283,8 @@ function ResidentLookupPage() {
 
       <ImagePreviewModal
         isOpen={Boolean(receiptPreviewModal)}
-        title={receiptPreviewModal?.title || 'Receipt preview'}
-        description="Review the uploaded payment receipt or proof of payment."
+        title={receiptPreviewModal?.title || 'Payment evidence preview'}
+        description="Review the uploaded proof of payment."
         imageUrl={receiptPreviewModal?.imageUrl}
         onClose={() => setReceiptPreviewModal(null)}
       />

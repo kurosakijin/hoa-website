@@ -37,7 +37,7 @@ const residentServices = [
 const lookupPreparation = [
   'Prepare your resident ID if you already received one from the admin team.',
   'If you do not have your ID yet, use your last name, first name, block, and lot number.',
-  'Uploaded payment receipts and posted payment dates will appear directly in your resident result.',
+  'Uploaded payment evidence and posted payment dates will appear directly in your resident result.',
 ];
 
 function ResidentPage() {
