@@ -20,27 +20,27 @@ router.get('/threads', async (_request, response, next) => {
   }
 });
 
-router.get('/threads/:threadId', async (request, response, next) => {
+router.get('/thread', async (request, response, next) => {
   try {
-    return response.json(await getAdminChatThread(request.params.threadId));
+    return response.json(await getAdminChatThread(request.query.threadId));
   } catch (error) {
     return next(error);
   }
 });
 
-router.post('/threads/:threadId/messages', async (request, response, next) => {
+router.post('/message', async (request, response, next) => {
   try {
     return response.status(201).json(
-      await sendAdminChatMessage(request.params.threadId, request.body?.message, request.admin)
+      await sendAdminChatMessage(request.body?.threadId, request.body?.message, request.admin)
     );
   } catch (error) {
     return next(error);
   }
 });
 
-router.delete('/threads/:threadId', async (request, response, next) => {
+router.post('/clear-thread', async (request, response, next) => {
   try {
-    return response.json(await clearChatThread(request.params.threadId, request.admin));
+    return response.json(await clearChatThread(request.body?.threadId, request.admin));
   } catch (error) {
     return next(error);
   }
@@ -54,7 +54,7 @@ router.post('/typing', async (request, response, next) => {
   }
 });
 
-router.post('/typing/stop', async (request, response, next) => {
+router.post('/typing-stop', async (request, response, next) => {
   try {
     return response.json(await clearAdminTyping(request.body?.threadId, request.admin));
   } catch (error) {
@@ -62,7 +62,7 @@ router.post('/typing/stop', async (request, response, next) => {
   }
 });
 
-router.post('/presence/heartbeat', async (request, response, next) => {
+router.post('/presence-heartbeat', async (request, response, next) => {
   try {
     return response.json(await recordAdminPresence(request.admin));
   } catch (error) {
@@ -70,7 +70,7 @@ router.post('/presence/heartbeat', async (request, response, next) => {
   }
 });
 
-router.post('/presence/offline', async (request, response, next) => {
+router.post('/presence-offline', async (request, response, next) => {
   try {
     return response.json(await clearAdminPresence(request.admin));
   } catch (error) {

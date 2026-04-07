@@ -136,11 +136,11 @@ export function getPublicOccupancySummary() {
 }
 
 export function getResidentChatThread(residentId) {
-  return request(() => api.get('/public/chat/thread', { params: { residentId } }));
+  return request(() => api.get('/public/chat-thread', { params: { residentId } }));
 }
 
 export function sendResidentChatMessage(payload) {
-  return request(() => api.post('/public/chat/messages', payload));
+  return request(() => api.post('/public/chat-message', payload));
 }
 
 export function getAdminChatThreads(token) {
@@ -148,15 +148,15 @@ export function getAdminChatThreads(token) {
 }
 
 export function getAdminChatThread(token, threadId) {
-  return request(() => api.get(`/chat/threads/${threadId}`, authHeaders(token)));
+  return request(() => api.get('/chat/thread', { ...authHeaders(token), params: { threadId } }));
 }
 
 export function sendAdminChatMessage(token, threadId, payload) {
-  return request(() => api.post(`/chat/threads/${threadId}/messages`, payload, authHeaders(token)));
+  return request(() => api.post('/chat/message', { threadId, ...payload }, authHeaders(token)));
 }
 
 export function clearAdminChatThread(token, threadId) {
-  return request(() => api.delete(`/chat/threads/${threadId}`, authHeaders(token)));
+  return request(() => api.post('/chat/clear-thread', { threadId }, authHeaders(token)));
 }
 
 export function setAdminChatTyping(token, threadId) {
@@ -168,9 +168,9 @@ export function clearAdminChatTyping(token, threadId) {
 }
 
 export function heartbeatAdminChat(token) {
-  return request(() => api.post('/chat/presence/heartbeat', {}, authHeaders(token)));
+  return request(() => api.post('/chat/presence-heartbeat', {}, authHeaders(token)));
 }
 
 export function setAdminChatOffline(token) {
-  return request(() => api.post('/chat/presence/offline', {}, authHeaders(token)));
+  return request(() => api.post('/chat/presence-offline', {}, authHeaders(token)));
 }

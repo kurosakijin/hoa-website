@@ -6,7 +6,6 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const authRoutes = require('./routes/authRoutes');
 const publicRoutes = require('./routes/publicRoutes');
-const publicChatRoutes = require('./routes/publicChatRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const { requireAdmin } = require('./middleware/auth');
 
@@ -26,7 +25,6 @@ function createApp() {
 
   app.use('/api/auth', authRoutes);
   app.use('/api/public', publicRoutes);
-  app.use('/api/public/chat', publicChatRoutes);
   app.use('/api/dashboard', requireAdmin, dashboardRoutes);
   app.use('/api/residents', requireAdmin, residentRoutes);
   app.use('/api/payments', requireAdmin, paymentRoutes);
