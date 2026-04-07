@@ -4,7 +4,7 @@ import Seo from '../components/Seo';
 import { useToast } from '../context/ToastContext';
 import { searchResidentByDetails, searchResidentById } from '../services/api';
 import { formatCurrency, formatDateOnly } from '../utils/format';
-import { formatMiddleName, formatResidentFullName } from '../utils/middleInitial';
+import { formatResidentFullName } from '../utils/middleInitial';
 import {
   getPaymentEvidenceActionLabel,
   getPaymentEvidenceEmptyLabel,
@@ -181,10 +181,6 @@ function ResidentLookupPage() {
                   <span>{result.address}</span>
                 </div>
                 <div className="info-chip">
-                  <strong>Middle name</strong>
-                  <span>{formatMiddleName(result.middleName) || 'Not provided'}</span>
-                </div>
-                <div className="info-chip">
                   <strong>Assigned lots</strong>
                   <span>{result.lots.length}</span>
                 </div>
@@ -252,15 +248,15 @@ function ResidentLookupPage() {
                                       className="table-action"
                                       onClick={() =>
                                         setReceiptPreviewModal({
-                                          title: getPaymentEvidencePreviewTitle(payment.method, formatDateOnly(payment.paymentDate)),
+                                          title: getPaymentEvidencePreviewTitle(payment, formatDateOnly(payment.paymentDate)),
                                           imageUrl: payment.receiptImageUrl,
                                         })
                                       }
                                     >
-                                      {getPaymentEvidenceActionLabel(payment.method)}
+                                      {getPaymentEvidenceActionLabel(payment)}
                                     </button>
                                   ) : (
-                                    <span className="text-xs text-slate-500">{getPaymentEvidenceEmptyLabel(payment.method)}</span>
+                                    <span className="text-xs text-slate-500">{getPaymentEvidenceEmptyLabel(payment)}</span>
                                   )}
                                 </td>
                               </tr>

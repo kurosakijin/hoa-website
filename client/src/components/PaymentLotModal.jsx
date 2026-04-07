@@ -9,9 +9,9 @@ import {
   getPaymentEvidenceCurrentLabel,
   getPaymentEvidenceEmptyLabel,
   getPaymentEvidenceFieldLabel,
-  getPaymentEvidenceLabel,
   getPaymentEvidencePreviewTitle,
   PAYMENT_METHODS,
+  resolvePaymentEvidenceLabel,
 } from '../utils/paymentEvidence';
 
 const PAYMENT_TYPES = ['Monthly Dues', 'Advance Pay'];
@@ -59,7 +59,7 @@ function PaymentLotModal({
   const [receiptPreviewModal, setReceiptPreviewModal] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const activeMethod = form.method || editingPayment?.method || 'Cash';
-  const activeEvidenceLabel = getPaymentEvidenceLabel(activeMethod);
+  const activeEvidenceLabel = resolvePaymentEvidenceLabel(activeMethod);
 
   useEffect(() => {
     setEditingPayment(null);
@@ -354,15 +354,15 @@ function PaymentLotModal({
                               className="table-action"
                               onClick={() =>
                                 setReceiptPreviewModal({
-                                  title: getPaymentEvidencePreviewTitle(payment.method, formatDateOnly(payment.paymentDate)),
+                                  title: getPaymentEvidencePreviewTitle(payment, formatDateOnly(payment.paymentDate)),
                                   imageUrl: payment.receiptImageUrl,
                                 })
                               }
                             >
-                              {getPaymentEvidenceActionLabel(payment.method)}
+                              {getPaymentEvidenceActionLabel(payment)}
                             </button>
                           ) : (
-                            <span className="text-xs text-slate-500">{getPaymentEvidenceEmptyLabel(payment.method)}</span>
+                            <span className="text-xs text-slate-500">{getPaymentEvidenceEmptyLabel(payment)}</span>
                           )}
                         </td>
                         <td className="py-4">{payment.notes || 'No notes'}</td>
