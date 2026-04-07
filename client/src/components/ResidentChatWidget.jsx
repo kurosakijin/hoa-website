@@ -29,6 +29,21 @@ function SendIcon() {
   );
 }
 
+function SpinnerIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="resident-chat-widget__icon resident-chat-widget__icon--spin">
+      <circle cx="12" cy="12" r="8.5" fill="none" opacity="0.25" stroke="currentColor" strokeWidth="2" />
+      <path
+        d="M20.5 12A8.5 8.5 0 0012 3.5"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
+
 function ResidentChatWidget({
   isOpen,
   isMinimized,
@@ -214,6 +229,10 @@ function ResidentChatWidget({
               <span className="resident-chat-widget__status-text">
                 Last active {formatDate(residentChat.adminPresence.lastSeenAt)}
               </span>
+            ) : residentChat?.resident ? (
+              <span className="resident-chat-widget__status-text">
+                Admin status is available, but no recent activity has been recorded yet.
+              </span>
             ) : (
               <span className="resident-chat-widget__status-text">
                 Enter your resident ID to start chatting with the admin team.
@@ -336,7 +355,7 @@ function ResidentChatWidget({
                     disabled={isChatSending || (!chatMessage.trim() && !attachmentImageFile)}
                     aria-label={isChatSending ? 'Sending message' : residentChat.adminPresence?.isOnline ? 'Send message' : 'Leave message'}
                   >
-                    <SendIcon />
+                    {isChatSending ? <SpinnerIcon /> : <SendIcon />}
                   </button>
                 </div>
                 <div className="chat-composer-attachment chat-composer-attachment--resident">

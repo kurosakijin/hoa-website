@@ -1483,7 +1483,6 @@ textarea {
   min-width: 0;
 }
 
-.resident-chat-widget__avatar,
 .messenger-thread__avatar {
   width: 3rem;
   height: 3rem;
@@ -1499,14 +1498,12 @@ textarea {
   font-weight: 800;
 }
 
-.resident-chat-widget__avatar--large,
 .messenger-thread__avatar--large {
   width: 3.5rem;
   height: 3.5rem;
   flex-basis: 3.5rem;
 }
 
-.resident-chat-widget__avatar-image,
 .messenger-thread__avatar-image {
   width: 100%;
   height: 100%;
@@ -1634,7 +1631,6 @@ textarea {
   color: rgba(226, 232, 240, 0.5);
 }
 
-.resident-chat-widget__resident-name,
 .admin-chat-messenger__name {
   color: var(--color-text-primary);
   font-size: 1rem;
@@ -1644,7 +1640,6 @@ textarea {
   overflow-wrap: anywhere;
 }
 
-.resident-chat-widget__resident-code,
 .admin-chat-messenger__sub,
 .messenger-thread__sub {
   color: var(--color-text-soft);
@@ -2005,6 +2000,10 @@ textarea {
   display: block;
 }
 
+.resident-chat-widget__icon--spin {
+  animation: residentChatIconSpin 0.9s linear infinite;
+}
+
 .chat-composer-attachment__hint {
   color: var(--color-text-soft);
   font-size: 0.82rem;
@@ -2188,6 +2187,16 @@ textarea {
   100% {
     box-shadow: 0 0 0 0 rgba(96, 165, 250, 0);
     transform: scale(0.95);
+  }
+}
+
+@keyframes residentChatIconSpin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
   }
 }
 
