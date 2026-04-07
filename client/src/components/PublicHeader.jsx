@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import ThemeToggleButton from './ThemeToggleButton';
 
 const publicNavItems = [
   { to: '/', label: 'Home', end: true },
@@ -31,9 +32,13 @@ function PublicHeader() {
             </NavLink>
           ))}
         </nav>
-        <NavLink to="/find-my-resident-info" className="action-button action-button--secondary">
-          Resident Lookup
-        </NavLink>
+
+        <div className="flex items-center gap-3">
+          <ThemeToggleButton compact />
+          <NavLink to="/find-my-resident-info" className="action-button action-button--secondary">
+            Resident Lookup
+          </NavLink>
+        </div>
       </div>
     </header>
   );

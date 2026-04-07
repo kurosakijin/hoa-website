@@ -1,6 +1,5 @@
+import { useEffect, useState } from 'react';
 import {
-  Area,
-  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
@@ -10,15 +9,8 @@ import {
   YAxis,
 } from 'recharts';
 import { Link } from 'react-router-dom';
-
-const previewTrend = [
-  { month: 'Jan', collections: 95000, residents: 208 },
-  { month: 'Feb', collections: 118000, residents: 214 },
-  { month: 'Mar', collections: 140000, residents: 227 },
-  { month: 'Apr', collections: 162000, residents: 233 },
-  { month: 'May', collections: 175000, residents: 240 },
-  { month: 'Jun', collections: 189000, residents: 247 },
-];
+import Seo from '../components/Seo';
+import { getPublicOccupancySummary } from '../services/api';
 
 const featureCards = [
   {
@@ -41,9 +33,79 @@ const residentServices = [
   { label: 'Property support', value: 'Single or multi-lot records' },
 ];
 
+const lookupPreparation = [
+  'Prepare your resident ID if you already received one from the admin team.',
+  'If you do not have your ID yet, use your last name, first name, block, and lot number.',
+  'Uploaded payment receipts and posted payment dates will appear directly in your resident result.',
+];
+
 function LandingPage() {
+  const [occupancySummary, setOccupancySummary] = useState({
+    occupiedResidents: 0,
+    occupiedLots: 0,
+    occupiedBlocksCount: 0,
+    occupiedBlocks: [],
+  });
+  const [isLoadingSummary, setIsLoadingSummary] = useState(true);
+  const [occupancyError, setOccupancyError] = useState('');
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadOccupancySummary() {
+      try {
+        const summary = await getPublicOccupancySummary();
+
+        if (!isMounted) {
+          return;
+        }
+
+        setOccupancySummary(summary);
+        setOccupancyError('');
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setOccupancyError(error.message);
+      } finally {
+        if (isMounted) {
+          setIsLoadingSummary(false);
+        }
+      }
+    }
+
+    loadOccupancySummary();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <main className="pb-20">
+      <Seo
+        title="Home"
+        description="Official public page for Sitio Hiyas Homeowners Association with resident lookup access, occupancy visibility, and community information."
+        path="/"
+        structuredData={{
+          '@context': 'https://schema.org',
+          '@graph': [
+            {
+              '@type': 'Organization',
+              name: 'Sitio Hiyas Homeowners Association',
+              url: import.meta.env.VITE_SITE_URL || undefined,
+              description:
+                'Public resident portal for Sitio Hiyas Homeowners Association with resident lookup, occupancy visibility, and payment history review.',
+            },
+            {
+              '@type': 'WebSite',
+              name: 'Sitio Hiyas Homeowners Association',
+              url: import.meta.env.VITE_SITE_URL || undefined,
+            },
+          ],
+        }}
+      />
       <section className="mx-auto grid max-w-7xl gap-8 px-4 pt-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-6 lg:pt-10">
         <div className="hero-copy surface-card p-8 lg:p-10">
           <p className="eyebrow">Sitio Hiyas community portal</p>
@@ -98,62 +160,85 @@ function LandingPage() {
               ))}
             </div>
 
-            <div className="mt-6 h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={previewTrend}>
-                  <defs>
-                    <linearGradient id="heroChart" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.65} />
-                      <stop offset="95%" stopColor="#60a5fa" stopOpacity={0.08} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid stroke="rgba(148,163,184,0.16)" vertical={false} />
-                  <XAxis dataKey="month" stroke="#94a3b8" tickLine={false} axisLine={false} />
-                  <YAxis stroke="#94a3b8" tickLine={false} axisLine={false} />
-                  <Tooltip
-                    contentStyle={{
-                      background: '#0f172a',
-                      border: '1px solid rgba(148, 163, 184, 0.2)',
-                      borderRadius: '18px',
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="collections"
-                    stroke="#818cf8"
-                    strokeWidth={3}
-                    fill="url(#heroChart)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+            <div className="mt-6">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="eyebrow">Current occupancy</p>
+                  <h3 className="mt-2 text-xl font-semibold text-white">Occupied resident records by block</h3>
+                </div>
+                <span className="status-tag">
+                  {isLoadingSummary ? 'Loading occupancy...' : `${occupancySummary.occupiedLots} occupied lots`}
+                </span>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="preview-stat">
+                  <span>Occupied residents</span>
+                  <strong>{isLoadingSummary ? '...' : occupancySummary.occupiedResidents}</strong>
+                </div>
+                <div className="preview-stat">
+                  <span>Occupied lots</span>
+                  <strong>{isLoadingSummary ? '...' : occupancySummary.occupiedLots}</strong>
+                </div>
+                <div className="preview-stat">
+                  <span>Blocks with occupancy</span>
+                  <strong>{isLoadingSummary ? '...' : occupancySummary.occupiedBlocksCount}</strong>
+                </div>
+              </div>
+
+              {occupancyError ? (
+                <p className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                  {occupancyError}
+                </p>
+              ) : null}
+
+              {!occupancyError && !isLoadingSummary && occupancySummary.occupiedBlocks.length ? (
+                <div className="mt-5 h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={occupancySummary.occupiedBlocks}>
+                      <CartesianGrid stroke="rgba(44, 62, 80, 0.12)" vertical={false} />
+                      <XAxis dataKey="block" stroke="#768694" tickLine={false} axisLine={false} />
+                      <YAxis allowDecimals={false} stroke="#768694" tickLine={false} axisLine={false} />
+                      <Tooltip
+                        formatter={(value) => [`${value} occupied lots`, 'Occupied lots']}
+                        labelFormatter={(value) => `Block ${value}`}
+                        contentStyle={{
+                          background: '#fbf6ef',
+                          border: '1px solid rgba(44, 62, 80, 0.12)',
+                          borderRadius: '18px',
+                          color: '#2c3e50',
+                        }}
+                      />
+                      <Bar dataKey="occupiedLots" fill="#88b04b" radius={[10, 10, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : null}
+
+              {!occupancyError && !isLoadingSummary && !occupancySummary.occupiedBlocks.length ? (
+                <div className="mt-5 rounded-3xl border border-white/10 bg-slate-950/40 p-5 text-sm text-slate-300">
+                  No occupied resident records are available yet. Once residents and lot assignments are added by the admin team, this chart will reflect the current occupied blocks.
+                </div>
+              ) : null}
             </div>
           </div>
 
           <div className="mt-4 surface-card p-5">
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <p className="eyebrow">Community growth</p>
-                <h3 className="mt-2 text-xl font-semibold text-white">Resident participation snapshot</h3>
+                <p className="eyebrow">Before you search</p>
+                <h3 className="mt-2 text-xl font-semibold text-white">Resident lookup preparation</h3>
               </div>
-              <span className="status-tag status-tag--violet">+18 this quarter</span>
+              <span className="status-tag status-tag--violet">Resident guide</span>
             </div>
 
-            <div className="h-48">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={previewTrend}>
-                  <CartesianGrid stroke="rgba(148,163,184,0.12)" vertical={false} />
-                  <XAxis dataKey="month" stroke="#94a3b8" tickLine={false} axisLine={false} />
-                  <YAxis stroke="#94a3b8" tickLine={false} axisLine={false} />
-                  <Tooltip
-                    contentStyle={{
-                      background: '#0f172a',
-                      border: '1px solid rgba(148, 163, 184, 0.2)',
-                      borderRadius: '18px',
-                    }}
-                  />
-                  <Bar dataKey="residents" fill="#60a5fa" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="grid gap-3">
+              {lookupPreparation.map((item) => (
+                <div key={item} className="preview-stat">
+                  <span>Resident support</span>
+                  <strong>{item}</strong>
+                </div>
+              ))}
             </div>
           </div>
         </div>

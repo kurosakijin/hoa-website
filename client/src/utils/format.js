@@ -20,6 +20,18 @@ export function formatDate(value) {
   });
 }
 
+export function formatDateOnly(value) {
+  if (!value) {
+    return 'No date';
+  }
+
+  return new Date(value).toLocaleDateString('en-PH', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
 export function toDateInputValue(value) {
   if (!value) {
     return new Date().toISOString().slice(0, 10);

@@ -1,5 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import Seo from './Seo';
+import ThemeToggleButton from './ThemeToggleButton';
 
 const adminNavItems = [
   { to: '/admin/dashboard', label: 'Dashboard' },
@@ -18,7 +20,13 @@ function AdminLayout() {
 
   return (
     <div className="admin-shell min-h-screen text-slate-100">
-      <div className="mx-auto flex min-h-screen max-w-[1600px] gap-6 px-4 py-6 lg:px-6">
+      <Seo
+        title="Admin Portal"
+        description="Internal administration area for Sitio Hiyas Homeowners Association."
+        path="/admin"
+        robots="noindex,nofollow"
+      />
+      <div className="mx-auto flex min-h-screen max-w-400 gap-6 px-4 py-6 lg:px-6">
         <aside className="admin-sidebar hidden xl:flex">
           <div>
             <div className="brand-mark brand-mark--dark">
@@ -27,10 +35,6 @@ function AdminLayout() {
                 <strong>Sitio Hiyas HOA</strong>
                 <small>Admin control center</small>
               </span>
-            </div>
-
-            <div className="mt-8">
-              <input className="admin-search" type="text" placeholder="Search residents, blocks, lots..." />
             </div>
 
             <nav className="mt-8 space-y-2">
@@ -63,11 +67,12 @@ function AdminLayout() {
               <p className="eyebrow">Admin workspace</p>
               <h1 className="text-2xl font-semibold text-white">Welcome back, {admin?.name || 'Administrator'}</h1>
               <p className="mt-2 text-sm text-slate-400">
-                Manage residents, dues, and homeowner records from one control center.
+                Manage resident records, dues, and property assignments from one control center.
               </p>
             </div>
 
             <div className="flex flex-wrap gap-3">
+              <ThemeToggleButton />
               <NavLink to="/" className="action-button action-button--ghost">
                 View public site
               </NavLink>

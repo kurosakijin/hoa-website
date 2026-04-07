@@ -10,6 +10,15 @@ const {
   roundCurrency,
 } = require('../utils/lotPricing');
 const { sanitizeContactNumber } = require('../utils/contactNumber');
+const {
+  sanitizeMiddleName,
+  formatResidentFullName,
+  formatResidentSortableName,
+} = require('../utils/middleInitial');
+const { uploadImageBuffer, deleteImage } = require('../lib/cloudinary');
+
+const PAYMENT_TYPES = ['Monthly Dues', 'Advance Pay'];
+const PAYMENT_METHODS = ['Land Bank', 'BDO', 'Bank Transfer', 'GCash', 'Cash'];
 
 function trimValue(value) {
   return typeof value === 'string' ? value.trim() : value;
@@ -18,6 +27,40 @@ function trimValue(value) {
 function normalizeCurrency(value, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function assertPaymentAmountValid(value) {
+  if (!(Number(value) > 0)) {
+    throw new Error('Payment amount must be greater than zero.');
+  }
+}
+
+function normalizePaymentType(value) {
+  const normalized = trimValue(value);
+  return PAYMENT_TYPES.includes(normalized) ? normalized : 'Monthly Dues';
+}
+
+function normalizePaymentMethod(value) {
+  const normalized = trimValue(value);
+
+  if (PAYMENT_METHODS.includes(normalized)) {
+    return normalized;
+  }
+
+  switch (String(normalized).toLowerCase()) {
+    case 'check':
+      return 'Bank Transfer';
+    case 'landbank':
+      return 'Land Bank';
+    case 'bdo':
+      return 'BDO';
+    case 'gcash':
+      return 'GCash';
+    case 'cash':
+      return 'Cash';
+    default:
+      return 'Cash';
+  }
 }
 
 function normalizeLotInput(lot) {
@@ -46,17 +89,42 @@ function normalizeResidentInput(payload = {}) {
   return {
     residentCode: trimValue(payload.residentCode),
     firstName: trimValue(payload.firstName),
+    middleName: sanitizeMiddleName(payload.middleName || payload.middleInitial),
     lastName: trimValue(payload.lastName),
     contactNumber: sanitizeContactNumber(payload.contactNumber),
     address: trimValue(payload.address),
-    status: payload.status === 'Tenant' ? 'Tenant' : 'Owner',
     isActive: payload.isActive !== false,
     lots: Array.isArray(payload.lots) ? payload.lots.map(normalizeLotInput).filter((lot) => lot.block && lot.lotNumber) : [],
   };
 }
 
+async function uploadResidentProfileImage(file) {
+  return uploadImageBuffer(file, 'resident-profiles');
+}
+
+async function uploadPaymentReceiptImage(file) {
+  return uploadImageBuffer(file, 'payment-receipts');
+}
+
+async function deletePaymentReceiptAssets(payments) {
+  await Promise.all(
+    payments
+      .map((payment) => payment.receiptImagePublicId)
+      .filter(Boolean)
+      .map((publicId) => deleteImage(publicId))
+  );
+}
+
 function getResidentName(resident) {
-  return `${resident.lastName}, ${resident.firstName}`;
+  return formatResidentSortableName(resident);
+}
+
+function getResidentFullName(resident) {
+  return formatResidentFullName(resident);
+}
+
+function isLotFullyPaid(lot) {
+  return normalizeCurrency(lot?.totalBalance) > 0 && normalizeCurrency(lot?.remainingBalance) <= 0;
 }
 
 function toPlainLot(lot) {
@@ -70,6 +138,7 @@ function toPlainLot(lot) {
     totalBalance: lot.totalBalance,
     remainingBalance: lot.remainingBalance,
     isActive: lot.isActive,
+    isLocked: isLotFullyPaid(lot),
   };
 }
 
@@ -82,11 +151,12 @@ function toResidentSummary(resident) {
     id: resident._id.toString(),
     residentCode: resident.residentCode,
     firstName: resident.firstName,
+    middleName: sanitizeMiddleName(resident.middleName || resident.middleInitial),
     lastName: resident.lastName,
-    fullName: getResidentName(resident),
+    fullName: getResidentFullName(resident),
     contactNumber: sanitizeContactNumber(resident.contactNumber),
     address: resident.address,
-    status: resident.status,
+    profileImageUrl: resident.profileImageUrl || '',
     isActive: resident.isActive,
     totalBalance,
     remainingBalance,
@@ -110,6 +180,7 @@ function toPaymentSummary(payment) {
     amount: payment.amount,
     type: payment.type,
     method: payment.method,
+    receiptImageUrl: payment.receiptImageUrl || '',
     notes: payment.notes,
     paymentDate: payment.paymentDate.toISOString(),
     createdAt: payment.createdAt,
@@ -122,6 +193,41 @@ function escapeRegex(value) {
 
 function formatLotLabel(block, lotNumber) {
   return `Block ${block} / Lot ${lotNumber}`;
+}
+
+function findLockedLotConflict(existingResident, nextLots) {
+  const nextLotsById = new Map(
+    nextLots
+      .filter((lot) => lot?._id)
+      .map((lot) => [lot._id.toString(), lot])
+  );
+
+  for (const existingLot of existingResident.lots) {
+    if (!isLotFullyPaid(existingLot)) {
+      continue;
+    }
+
+    const lockedLotId = existingLot._id.toString();
+    const nextLot = nextLotsById.get(lockedLotId);
+
+    if (!nextLot) {
+      return `Fully paid ${formatLotLabel(existingLot.block, existingLot.lotNumber)} is locked and cannot be forfeited or removed.`;
+    }
+
+    const lotWasChanged =
+      String(existingLot.block) !== String(nextLot.block) ||
+      String(existingLot.lotNumber) !== String(nextLot.lotNumber) ||
+      Number(existingLot.squareMeters) !== Number(nextLot.squareMeters) ||
+      Number(existingLot.pricePerSquareMeter || 0) !== Number(nextLot.pricePerSquareMeter || 0) ||
+      Boolean(existingLot.isSpotCash) !== Boolean(nextLot.isSpotCash) ||
+      nextLot.isActive === false;
+
+    if (lotWasChanged) {
+      return `Fully paid ${formatLotLabel(existingLot.block, existingLot.lotNumber)} is locked and cannot be changed.`;
+    }
+  }
+
+  return '';
 }
 
 function assertLotFinancialsValid(lots) {
@@ -188,7 +294,7 @@ async function assertLotAssignmentsValid(lots, currentResident = null) {
         },
       },
     })),
-  }).select('residentCode firstName lastName lots');
+  }).select('residentCode firstName middleName lastName lots');
 
   if (!conflicts.length) {
     return;
@@ -205,7 +311,7 @@ async function assertLotAssignmentsValid(lots, currentResident = null) {
       if (match) {
         throw new Error(
           `${formatLotLabel(lot.block, lot.lotNumber)} is already assigned to ` +
-            `${conflictResident.lastName}, ${conflictResident.firstName} (${conflictResident.residentCode}).`
+            `${getResidentName(conflictResident)} (${conflictResident.residentCode}).`
         );
       }
     }
@@ -280,10 +386,10 @@ async function ensureDatabaseSeeded() {
         $set: {
           residentCode: await ensureUniqueResidentCode(),
           firstName,
+          middleName: '',
           lastName,
           contactNumber: sanitizeContactNumber(legacy.contactNumber),
           address: legacy.address || 'Address not yet provided',
-          status: legacy.status === 'Tenant' ? 'Tenant' : 'Owner',
           isActive: true,
           lots: [
             {
@@ -312,6 +418,27 @@ async function ensureDatabaseSeeded() {
     );
   }
 
+  const residentsWithLegacyMiddleInitial = await Resident.collection
+    .find({
+      middleName: { $exists: false },
+      middleInitial: { $exists: true },
+    })
+    .toArray();
+
+  for (const resident of residentsWithLegacyMiddleInitial) {
+    await Resident.collection.updateOne(
+      { _id: resident._id },
+      {
+        $set: {
+          middleName: sanitizeMiddleName(resident.middleInitial),
+        },
+        $unset: {
+          middleInitial: '',
+        },
+      }
+    );
+  }
+
   for (const seedResident of seedResidents) {
     const existing = await Resident.findOne({ residentCode: seedResident.residentCode });
 
@@ -320,9 +447,11 @@ async function ensureDatabaseSeeded() {
     }
   }
 
-  const seededResidents = await Resident.find({
-    residentCode: { $in: seedResidents.map((resident) => resident.residentCode) },
-  });
+  const seededResidents = seedResidents.length
+    ? await Resident.find({
+        residentCode: { $in: seedResidents.map((resident) => resident.residentCode) },
+      })
+    : [];
 
   for (const seedPayment of seedPayments) {
     const resident = seededResidents.find((item) => item.residentCode === seedPayment.residentCode);
@@ -349,8 +478,8 @@ async function ensureDatabaseSeeded() {
         lotNumber: lot.lotNumber,
         squareMeters: lot.squareMeters,
         amount: seedPayment.amount,
-        type: seedPayment.type,
-        method: seedPayment.method,
+        type: normalizePaymentType(seedPayment.type),
+        method: normalizePaymentMethod(seedPayment.method),
         notes: seedPayment.notes,
         paymentDate: new Date(seedPayment.paymentDate),
       });
@@ -358,13 +487,23 @@ async function ensureDatabaseSeeded() {
   }
 
   const residents = await Resident.find();
+  const payments = await Payment.find();
 
   for (const resident of residents) {
     let hasPricingUpdates = false;
+    const matchingSeedResident = seedResidents.find((seedResident) => seedResident.residentCode === resident.residentCode);
     const nextContactNumber = sanitizeContactNumber(resident.contactNumber);
 
     if (resident.contactNumber !== nextContactNumber) {
       resident.contactNumber = nextContactNumber;
+      hasPricingUpdates = true;
+    }
+
+    const nextMiddleName = sanitizeMiddleName(
+      resident.middleName || resident.middleInitial || matchingSeedResident?.middleName || matchingSeedResident?.middleInitial
+    );
+    if (resident.middleName !== nextMiddleName) {
+      resident.middleName = nextMiddleName;
       hasPricingUpdates = true;
     }
 
@@ -418,7 +557,34 @@ async function ensureDatabaseSeeded() {
 
   for (const resident of residents) {
     for (const lot of resident.lots) {
+      await Payment.updateMany(
+        {
+          resident: resident._id,
+          lotId: lot._id.toString(),
+        },
+        {
+          $set: {
+            residentName: getResidentName(resident),
+            residentCode: resident.residentCode,
+            block: lot.block,
+            lotNumber: lot.lotNumber,
+            squareMeters: lot.squareMeters,
+          },
+        }
+      );
+
       await recalculateLotBalance(resident._id, lot._id);
+    }
+  }
+
+  for (const payment of payments) {
+    const nextType = normalizePaymentType(payment.type);
+    const nextMethod = normalizePaymentMethod(payment.method);
+
+    if (payment.type !== nextType || payment.method !== nextMethod) {
+      payment.type = nextType;
+      payment.method = nextMethod;
+      await payment.save();
     }
   }
 }
@@ -495,12 +661,39 @@ async function getDashboardSummary() {
   };
 }
 
+async function getPublicOccupancySummary() {
+  const residents = await Resident.find({ isActive: true }).select('lots');
+  const occupiedLots = residents.flatMap((resident) => resident.lots.filter((lot) => lot.isActive !== false));
+  const occupiedBlocksMap = new Map();
+
+  occupiedLots.forEach((lot) => {
+    const blockKey = String(lot.block);
+    occupiedBlocksMap.set(blockKey, (occupiedBlocksMap.get(blockKey) || 0) + 1);
+  });
+
+  const occupiedBlocks = Array.from(occupiedBlocksMap.entries())
+    .map(([block, occupiedLotsCount]) => ({
+      block,
+      occupiedLots: occupiedLotsCount,
+    }))
+    .sort((left, right) => Number(left.block) - Number(right.block));
+
+  const occupiedResidents = residents.filter((resident) => resident.lots.some((lot) => lot.isActive !== false)).length;
+
+  return {
+    occupiedResidents,
+    occupiedLots: occupiedLots.length,
+    occupiedBlocksCount: occupiedBlocks.length,
+    occupiedBlocks,
+  };
+}
+
 async function listResidents() {
   const residents = await Resident.find().sort({ lastName: 1, firstName: 1 });
   return residents.map(toResidentSummary);
 }
 
-async function createResident(payload) {
+async function createResident(payload, options = {}) {
   const normalized = normalizeResidentInput(payload);
 
   if (!normalized.firstName || !normalized.lastName || !normalized.contactNumber || !normalized.address) {
@@ -520,11 +713,17 @@ async function createResident(payload) {
     remainingBalance: lot.totalBalance,
   }));
 
+  const uploadedProfileImage = await uploadResidentProfileImage(options.profileImageFile);
+  if (uploadedProfileImage) {
+    normalized.profileImageUrl = uploadedProfileImage.url;
+    normalized.profileImagePublicId = uploadedProfileImage.publicId;
+  }
+
   const resident = await Resident.create(normalized);
   return toResidentSummary(resident);
 }
 
-async function updateResident(residentId, payload) {
+async function updateResident(residentId, payload, options = {}) {
   const resident = await Resident.findById(residentId);
 
   if (!resident) {
@@ -537,36 +736,96 @@ async function updateResident(residentId, payload) {
     throw new Error('At least one lot must remain assigned to the resident.');
   }
 
+  const lockedLotConflict = findLockedLotConflict(resident, normalized.lots);
+  if (lockedLotConflict) {
+    throw new Error(lockedLotConflict);
+  }
+
   assertLotFinancialsValid(normalized.lots);
   await assertLotAssignmentsValid(normalized.lots, resident);
 
   resident.firstName = normalized.firstName;
+  resident.middleName = normalized.middleName;
   resident.lastName = normalized.lastName;
   resident.contactNumber = normalized.contactNumber;
   resident.address = normalized.address;
-  resident.status = normalized.status;
   resident.isActive = normalized.isActive;
+
+  const previousProfileImagePublicId = resident.profileImagePublicId;
+  const uploadedProfileImage = await uploadResidentProfileImage(options.profileImageFile);
+  if (uploadedProfileImage) {
+    resident.profileImageUrl = uploadedProfileImage.url;
+    resident.profileImagePublicId = uploadedProfileImage.publicId;
+  }
 
   const previousLotIds = new Set(resident.lots.map((lot) => lot._id.toString()));
 
-  resident.lots = normalized.lots.map((lot) => ({
-    _id: lot._id,
-    block: lot.block,
-    lotNumber: lot.lotNumber,
-    squareMeters: lot.squareMeters,
-    pricePerSquareMeter: lot.pricePerSquareMeter,
-    isSpotCash: lot.isSpotCash,
-    totalBalance: lot.totalBalance,
-    remainingBalance: lot.totalBalance,
-    isActive: lot.isActive,
-  }));
+  resident.lots = normalized.lots.map((lot) => {
+    const existingLot = lot._id ? resident.lots.id(lot._id) : null;
+
+    if (existingLot && isLotFullyPaid(existingLot)) {
+      return {
+        _id: existingLot._id,
+        block: existingLot.block,
+        lotNumber: existingLot.lotNumber,
+        squareMeters: existingLot.squareMeters,
+        pricePerSquareMeter: existingLot.pricePerSquareMeter,
+        isSpotCash: existingLot.isSpotCash,
+        totalBalance: existingLot.totalBalance,
+        remainingBalance: existingLot.remainingBalance,
+        isActive: existingLot.isActive,
+      };
+    }
+
+    return {
+      _id: lot._id || undefined,
+      block: lot.block,
+      lotNumber: lot.lotNumber,
+      squareMeters: lot.squareMeters,
+      pricePerSquareMeter: lot.pricePerSquareMeter,
+      isSpotCash: lot.isSpotCash,
+      totalBalance: lot.totalBalance,
+      remainingBalance: lot.totalBalance,
+      isActive: lot.isActive,
+    };
+  });
 
   const nextLotIds = new Set(resident.lots.map((lot) => lot._id.toString()));
   const removedLotIds = Array.from(previousLotIds).filter((lotId) => !nextLotIds.has(lotId));
 
   await resident.save();
 
+  if (uploadedProfileImage && previousProfileImagePublicId && previousProfileImagePublicId !== uploadedProfileImage.publicId) {
+    await deleteImage(previousProfileImagePublicId);
+  }
+
+  await Promise.all(
+    resident.lots.map((lot) =>
+      Payment.updateMany(
+        {
+          resident: resident._id,
+          lotId: lot._id.toString(),
+        },
+        {
+          $set: {
+            residentName: getResidentName(resident),
+            residentCode: resident.residentCode,
+            block: lot.block,
+            lotNumber: lot.lotNumber,
+            squareMeters: lot.squareMeters,
+          },
+        }
+      )
+    )
+  );
+
   if (removedLotIds.length) {
+    const removedPayments = await Payment.find({
+      resident: resident._id,
+      lotId: { $in: removedLotIds },
+    }).select('receiptImagePublicId');
+
+    await deletePaymentReceiptAssets(removedPayments);
     await Payment.deleteMany({
       resident: resident._id,
       lotId: { $in: removedLotIds },
@@ -594,13 +853,17 @@ async function transferResidentLot(residentId, payload) {
     throw new Error('Selected lot was not found.');
   }
 
+  if (isLotFullyPaid(lot)) {
+    throw new Error(`Fully paid ${formatLotLabel(lot.block, lot.lotNumber)} is locked and cannot be transferred.`);
+  }
+
   const nextResident = await Resident.create({
     residentCode: await ensureUniqueResidentCode(),
     firstName: trimValue(payload.firstName),
+    middleName: sanitizeMiddleName(payload.middleName || payload.middleInitial),
     lastName: trimValue(payload.lastName),
     contactNumber: sanitizeContactNumber(payload.contactNumber),
     address: trimValue(payload.address),
-    status: payload.status === 'Tenant' ? 'Tenant' : 'Owner',
     isActive: true,
     lots: [
       {
@@ -637,6 +900,7 @@ async function transferResidentLot(residentId, payload) {
   sourceResident.isActive = sourceResident.lots.length > 0;
 
   if (sourceResident.lots.length === 0) {
+    await deleteImage(sourceResident.profileImagePublicId);
     await sourceResident.deleteOne();
   } else {
     await sourceResident.save();
@@ -653,7 +917,16 @@ async function deleteResident(residentId) {
     throw new Error('Resident not found.');
   }
 
+  const lockedLot = resident.lots.find((lot) => isLotFullyPaid(lot));
+
+  if (lockedLot) {
+    throw new Error(`Fully paid ${formatLotLabel(lockedLot.block, lockedLot.lotNumber)} is locked and cannot be forfeited.`);
+  }
+
+  const payments = await Payment.find({ resident: resident._id }).select('receiptImagePublicId');
+  await deletePaymentReceiptAssets(payments);
   await Payment.deleteMany({ resident: resident._id });
+  await deleteImage(resident.profileImagePublicId);
   await resident.deleteOne();
 }
 
@@ -667,6 +940,7 @@ async function listPaymentLots() {
         residentId: resident._id.toString(),
         residentCode: resident.residentCode,
         residentName: getResidentName(resident),
+        profileImageUrl: resident.profileImageUrl || '',
         contactNumber: sanitizeContactNumber(resident.contactNumber),
         address: resident.address,
         block: lot.block,
@@ -704,15 +978,17 @@ async function getPaymentLotDetails(residentId, lotId) {
     residentCode: resident.residentCode,
     residentName: getResidentName(resident),
     firstName: resident.firstName,
+    middleName: sanitizeMiddleName(resident.middleName || resident.middleInitial),
     lastName: resident.lastName,
     contactNumber: sanitizeContactNumber(resident.contactNumber),
     address: resident.address,
+    profileImageUrl: resident.profileImageUrl || '',
     lot: toPlainLot(lot),
     paymentHistory: history.map(toPaymentSummary),
   };
 }
 
-async function createPayment(payload) {
+async function createPayment(payload, options = {}) {
   const resident = await Resident.findById(payload.residentId);
 
   if (!resident) {
@@ -725,6 +1001,8 @@ async function createPayment(payload) {
     throw new Error('Lot not found.');
   }
 
+  assertPaymentAmountValid(payload.amount);
+  const uploadedReceiptImage = await uploadPaymentReceiptImage(options.receiptImageFile);
   const payment = await Payment.create({
     resident: resident._id,
     residentCode: resident.residentCode,
@@ -734,8 +1012,10 @@ async function createPayment(payload) {
     lotNumber: lot.lotNumber,
     squareMeters: lot.squareMeters,
     amount: normalizeCurrency(payload.amount),
-    type: payload.type || 'Association Dues',
-    method: payload.method,
+    type: normalizePaymentType(payload.type),
+    method: normalizePaymentMethod(payload.method),
+    receiptImageUrl: uploadedReceiptImage?.url || '',
+    receiptImagePublicId: uploadedReceiptImage?.publicId || '',
     notes: trimValue(payload.notes) || '',
     paymentDate: payload.paymentDate ? new Date(payload.paymentDate) : new Date(),
   });
@@ -744,19 +1024,30 @@ async function createPayment(payload) {
   return toPaymentSummary(payment);
 }
 
-async function updatePayment(paymentId, payload) {
+async function updatePayment(paymentId, payload, options = {}) {
   const payment = await Payment.findById(paymentId);
 
   if (!payment) {
     throw new Error('Payment record not found.');
   }
 
+  assertPaymentAmountValid(payload.amount);
+  const previousReceiptImagePublicId = payment.receiptImagePublicId;
+  const uploadedReceiptImage = await uploadPaymentReceiptImage(options.receiptImageFile);
   payment.amount = normalizeCurrency(payload.amount, payment.amount);
-  payment.type = payload.type || payment.type;
-  payment.method = payload.method || payment.method;
+  payment.type = normalizePaymentType(payload.type || payment.type);
+  payment.method = normalizePaymentMethod(payload.method || payment.method);
+  if (uploadedReceiptImage) {
+    payment.receiptImageUrl = uploadedReceiptImage.url;
+    payment.receiptImagePublicId = uploadedReceiptImage.publicId;
+  }
   payment.notes = trimValue(payload.notes) || '';
   payment.paymentDate = payload.paymentDate ? new Date(payload.paymentDate) : payment.paymentDate;
   await payment.save();
+
+  if (uploadedReceiptImage && previousReceiptImagePublicId && previousReceiptImagePublicId !== uploadedReceiptImage.publicId) {
+    await deleteImage(previousReceiptImagePublicId);
+  }
 
   await recalculateLotBalance(payment.resident, payment.lotId);
   return toPaymentSummary(payment);
@@ -771,6 +1062,7 @@ async function deletePayment(paymentId) {
 
   const residentId = payment.resident;
   const lotId = payment.lotId;
+  await deleteImage(payment.receiptImagePublicId);
   await payment.deleteOne();
   await recalculateLotBalance(residentId, lotId);
 }
@@ -834,11 +1126,12 @@ async function buildPublicResidentPayload(resident, visibleLotIds) {
     id: resident._id.toString(),
     residentCode: resident.residentCode,
     firstName: resident.firstName,
+    middleName: sanitizeMiddleName(resident.middleName || resident.middleInitial),
     lastName: resident.lastName,
-    fullName: `${resident.firstName} ${resident.lastName}`,
+    fullName: getResidentFullName(resident),
     contactNumber: sanitizeContactNumber(resident.contactNumber),
     address: resident.address,
-    status: resident.status,
+    profileImageUrl: resident.profileImageUrl || '',
     lots: lots.map((lot) => ({
       ...toPlainLot(lot),
       paymentHistory: history
@@ -851,6 +1144,7 @@ async function buildPublicResidentPayload(resident, visibleLotIds) {
 module.exports = {
   ensureDatabaseSeeded,
   getDashboardSummary,
+  getPublicOccupancySummary,
   listResidents,
   createResident,
   updateResident,

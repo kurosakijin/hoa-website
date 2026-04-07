@@ -1,7 +1,15 @@
 const express = require('express');
-const { searchResidentInformation } = require('../services/hoaService');
+const { getPublicOccupancySummary, searchResidentInformation } = require('../services/hoaService');
 
 const router = express.Router();
+
+router.get('/occupancy-summary', async (_request, response, next) => {
+  try {
+    return response.json(await getPublicOccupancySummary());
+  } catch (error) {
+    return next(error);
+  }
+});
 
 router.get('/resident-search', async (request, response, next) => {
   try {

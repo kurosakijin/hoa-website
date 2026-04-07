@@ -12,7 +12,12 @@ import {
   derivePricePerSquareMeter,
 } from '../utils/lotPricing';
 import { sanitizeContactNumber } from '../utils/contactNumber';
+import { sanitizeMiddleName } from '../utils/middleInitial';
 import { formatCurrency } from '../utils/format';
+
+function isLotLocked(lot) {
+  return Number(lot?.totalBalance) > 0 && Number(lot?.remainingBalance) <= 0;
+}
 
 function withCalculatedBalances(lot) {
   const preview = calculateRemainingPreview({
@@ -73,20 +78,20 @@ function createInitialState(resident) {
   if (!resident) {
     return {
       firstName: '',
+      middleName: '',
       lastName: '',
       contactNumber: '',
       address: '',
-      status: 'Owner',
       lots: [createEmptyLot()],
     };
   }
 
   return {
     firstName: resident.firstName,
+    middleName: sanitizeMiddleName(resident.middleName || resident.middleInitial),
     lastName: resident.lastName,
     contactNumber: resident.contactNumber,
     address: resident.address,
-    status: resident.status,
     lots: resident.lots.map((lot) => createLotState(lot)),
   };
 }
@@ -99,8 +104,56 @@ function buildSelectedLotKeys(lots, excludedIndex = -1) {
   );
 }
 
+function getResidentInitials(source) {
+  return [source.firstName?.[0], source.lastName?.[0]].filter(Boolean).join('').toUpperCase() || 'SH';
+}
+
+function validateResidentForm(form) {
+  if (!String(form.lastName || '').trim()) {
+    return 'Last name is required.';
+  }
+
+  if (!String(form.firstName || '').trim()) {
+    return 'First name is required.';
+  }
+
+  if (!String(form.contactNumber || '').trim()) {
+    return 'Contact number is required.';
+  }
+
+  if (!String(form.address || '').trim()) {
+    return 'Address is required.';
+  }
+
+  if (!Array.isArray(form.lots) || !form.lots.length) {
+    return 'At least one lot must be assigned to the resident.';
+  }
+
+  for (const [index, lot] of form.lots.entries()) {
+    if (!String(lot.block || '').trim()) {
+      return `Block is required for lot assignment ${index + 1}.`;
+    }
+
+    if (!String(lot.lotNumber || '').trim()) {
+      return `Lot number is required for lot assignment ${index + 1}.`;
+    }
+
+    if (!(Number(lot.squareMeters) > 0)) {
+      return `Square meters must be greater than zero for lot assignment ${index + 1}.`;
+    }
+
+    if (!(Number(lot.pricePerSquareMeter) > 0)) {
+      return `Price per sqm must be greater than zero for lot assignment ${index + 1}.`;
+    }
+  }
+
+  return '';
+}
+
 function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit }) {
   const [form, setForm] = useState(createInitialState(resident));
+  const [profileImageFile, setProfileImageFile] = useState(null);
+  const [profileImagePreview, setProfileImagePreview] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -133,6 +186,8 @@ function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit
 
   useEffect(() => {
     setForm(createInitialState(resident));
+    setProfileImageFile(null);
+    setProfileImagePreview(resident?.profileImageUrl || '');
     setError('');
   }, [resident, isOpen]);
 
@@ -145,6 +200,10 @@ function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit
       ...current,
       lots: current.lots.map((lot, lotIndex) => {
         if (lotIndex !== index) {
+          return lot;
+        }
+
+        if (isLotLocked(lot)) {
           return lot;
         }
 
@@ -186,18 +245,37 @@ function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit
   function removeLot(index) {
     setForm((current) => ({
       ...current,
-      lots: current.lots.filter((_, lotIndex) => lotIndex !== index),
+      lots: current.lots.filter((lot, lotIndex) => lotIndex !== index || isLotLocked(lot)),
     }));
+  }
+
+  function handleProfileImageChange(event) {
+    const nextFile = event.target.files?.[0];
+
+    if (!nextFile) {
+      return;
+    }
+
+    setProfileImageFile(nextFile);
+    setProfileImagePreview(URL.createObjectURL(nextFile));
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
+    const validationError = validateResidentForm(form);
+
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     setIsSaving(true);
     setError('');
 
     try {
       await onSubmit({
         ...form,
+        profileImageFile,
         lots: form.lots.map((lot) => ({
           id: lot.id,
           block: lot.block,
@@ -222,41 +300,70 @@ function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit
     <Modal
       isOpen={isOpen}
       title={resident ? 'Edit resident record' : 'Add resident record'}
-      description="Capture the homeowner profile, assigned lot, and the pricing basis for automatic balance computation."
+      description="Capture the resident profile, profile picture, assigned lot, and pricing basis for automatic balance computation."
       onClose={onClose}
       wide
     >
-      <form className="space-y-6" onSubmit={handleSubmit}>
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="field-shell">
-            <span>Last name</span>
-            <input value={form.lastName} onChange={(event) => updateField('lastName', event.target.value)} required />
-          </label>
-          <label className="field-shell">
-            <span>First name</span>
-            <input value={form.firstName} onChange={(event) => updateField('firstName', event.target.value)} required />
-          </label>
-          <label className="field-shell">
-            <span>Contact number</span>
-            <input
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={form.contactNumber}
-              onChange={(event) => updateField('contactNumber', sanitizeContactNumber(event.target.value))}
-              required
-            />
-          </label>
-          <label className="field-shell">
-            <span>Resident type</span>
-            <select value={form.status} onChange={(event) => updateField('status', event.target.value)}>
-              <option value="Owner">Owner</option>
-              <option value="Tenant">Tenant</option>
-            </select>
-          </label>
-          <label className="field-shell md:col-span-2">
-            <span>Address</span>
-            <input value={form.address} onChange={(event) => updateField('address', event.target.value)} required />
-          </label>
+      <form className="space-y-6" onSubmit={handleSubmit} noValidate>
+        <div className="resident-form-shell">
+          <section className="resident-media-card">
+            <div className="resident-media-card__preview">
+              {profileImagePreview ? (
+                <img src={profileImagePreview} alt="Resident profile preview" className="resident-media-card__image" />
+              ) : (
+                <span className="resident-media-card__fallback">{getResidentInitials(form)}</span>
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white">Resident profile picture</p>
+              <p className="mt-2 text-sm leading-6 text-slate-400">
+                Upload a clear resident photo. This photo will also show on the resident lookup page.
+              </p>
+            </div>
+            <label className="field-shell">
+              <span>{resident?.profileImageUrl ? 'Replace photo' : 'Upload photo'}</span>
+              <input type="file" accept="image/*" onChange={handleProfileImageChange} />
+            </label>
+            {profileImageFile ? (
+              <p className="text-sm text-slate-400">Selected file: {profileImageFile.name}</p>
+            ) : resident?.profileImageUrl ? (
+              <p className="text-sm text-slate-400">Current photo is already attached to this resident record.</p>
+            ) : null}
+          </section>
+
+          <section className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="field-shell">
+                <span>Last name</span>
+                <input value={form.lastName} onChange={(event) => updateField('lastName', event.target.value)} />
+              </label>
+              <label className="field-shell">
+                <span>First name</span>
+                <input value={form.firstName} onChange={(event) => updateField('firstName', event.target.value)} />
+              </label>
+              <label className="field-shell">
+                <span>Middle name</span>
+                <input
+                  value={form.middleName}
+                  onChange={(event) => updateField('middleName', sanitizeMiddleName(event.target.value))}
+                  placeholder="Enter middle name"
+                />
+              </label>
+              <label className="field-shell">
+                <span>Contact number</span>
+                <input
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={form.contactNumber}
+                  onChange={(event) => updateField('contactNumber', sanitizeContactNumber(event.target.value))}
+                />
+              </label>
+              <label className="field-shell md:col-span-2">
+                <span>Address</span>
+                <input value={form.address} onChange={(event) => updateField('address', event.target.value)} />
+              </label>
+            </div>
+          </section>
         </div>
 
         <div className="space-y-4">
@@ -278,6 +385,7 @@ function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit
           </div>
 
           {form.lots.map((lot, index) => {
+            const lotLocked = isLotLocked(lot);
             const pricing = calculateRemainingPreview({
               squareMeters: lot.squareMeters === '' ? DEFAULT_SQUARE_METERS : lot.squareMeters,
               pricePerSquareMeter: lot.pricePerSquareMeter,
@@ -301,18 +409,27 @@ function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit
             return (
               <div key={lot.id || index} className="rounded-3xl border border-white/10 bg-slate-950/40 p-4">
                 <div className="mb-4 flex items-center justify-between">
-                  <p className="text-sm font-semibold text-white">Lot assignment {index + 1}</p>
-                  {form.lots.length > 1 ? (
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-white">Lot assignment {index + 1}</p>
+                    {lotLocked ? <span className="status-tag">Fully paid and locked</span> : null}
+                  </div>
+                  {form.lots.length > 1 && !lotLocked ? (
                     <button type="button" className="action-button action-button--danger" onClick={() => removeLot(index)}>
                       Forfeit lot
                     </button>
                   ) : null}
                 </div>
 
+                {lotLocked ? (
+                  <p className="lot-lock-notice">
+                    This lot is already fully paid. Its block, lot number, pricing, and forfeiture are locked, but you can still edit the resident details and add another lot.
+                  </p>
+                ) : null}
+
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                   <label className="field-shell">
                     <span>Block</span>
-                    <select value={lot.block} onChange={(event) => updateLot(index, 'block', event.target.value)} required>
+                    <select value={lot.block} onChange={(event) => updateLot(index, 'block', event.target.value)} disabled={lotLocked}>
                       <option value="">Select block</option>
                       {blockOptions.map((blockOption) => (
                         <option key={blockOption} value={blockOption}>
@@ -326,8 +443,7 @@ function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit
                     <select
                       value={lot.lotNumber}
                       onChange={(event) => updateLot(index, 'lotNumber', event.target.value)}
-                      disabled={!lot.block || !lotOptions.length}
-                      required
+                      disabled={lotLocked || !lot.block || !lotOptions.length}
                     >
                       <option value="">
                         {!lot.block ? 'Select block first' : lotOptions.length ? 'Select lot' : 'No available lots in this block'}
@@ -347,7 +463,7 @@ function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit
                       step="0.01"
                       value={lot.squareMeters}
                       onChange={(event) => updateLot(index, 'squareMeters', event.target.value)}
-                      required
+                      disabled={lotLocked}
                     />
                   </label>
                   <label className="field-shell">
@@ -358,7 +474,7 @@ function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit
                       step="0.01"
                       value={lot.pricePerSquareMeter}
                       onChange={(event) => updateLot(index, 'pricePerSquareMeter', event.target.value)}
-                      required
+                      disabled={lotLocked}
                     />
                   </label>
                 </div>
@@ -369,6 +485,7 @@ function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit
                     className="mt-1 h-4 w-4 accent-cyan-400"
                     checked={lot.isSpotCash}
                     onChange={(event) => updateLot(index, 'isSpotCash', event.target.checked)}
+                    disabled={lotLocked}
                   />
                   <span>
                     <strong className="text-white">Cash</strong>
@@ -416,7 +533,7 @@ function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit
 
         {!hasAvailableLots ? (
           <p className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-            No additional vacant lots are available right now. Existing assigned lots can still be edited without duplicating another resident's block and lot.
+            No additional vacant lots are available right now. Existing assigned lots can still be reviewed without duplicating another resident&apos;s block and lot.
           </p>
         ) : null}
 

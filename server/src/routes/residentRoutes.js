@@ -1,4 +1,5 @@
 const express = require('express');
+const { upload } = require('../middleware/upload');
 const {
   createResident,
   deleteResident,
@@ -6,6 +7,7 @@ const {
   transferResidentLot,
   updateResident,
 } = require('../services/hoaService');
+const { parseRequestPayload } = require('../utils/requestPayload');
 
 const router = express.Router();
 
@@ -17,17 +19,21 @@ router.get('/', async (_request, response, next) => {
   }
 });
 
-router.post('/', async (request, response, next) => {
+router.post('/', upload.single('profileImage'), async (request, response, next) => {
   try {
-    response.status(201).json(await createResident(request.body));
+    response.status(201).json(await createResident(parseRequestPayload(request), { profileImageFile: request.file }));
   } catch (error) {
     next(error);
   }
 });
 
-router.put('/:residentId', async (request, response, next) => {
+router.put('/:residentId', upload.single('profileImage'), async (request, response, next) => {
   try {
-    response.json(await updateResident(request.params.residentId, request.body));
+    response.json(
+      await updateResident(request.params.residentId, parseRequestPayload(request), {
+        profileImageFile: request.file,
+      })
+    );
   } catch (error) {
     next(error);
   }

@@ -1,4 +1,5 @@
 const express = require('express');
+const { upload } = require('../middleware/upload');
 const {
   createPayment,
   deletePayment,
@@ -6,6 +7,7 @@ const {
   listPaymentLots,
   updatePayment,
 } = require('../services/hoaService');
+const { parseRequestPayload } = require('../utils/requestPayload');
 
 const router = express.Router();
 
@@ -25,17 +27,21 @@ router.get('/lots/:residentId/:lotId', async (request, response, next) => {
   }
 });
 
-router.post('/', async (request, response, next) => {
+router.post('/', upload.single('receiptImage'), async (request, response, next) => {
   try {
-    response.status(201).json(await createPayment(request.body));
+    response.status(201).json(await createPayment(parseRequestPayload(request), { receiptImageFile: request.file }));
   } catch (error) {
     next(error);
   }
 });
 
-router.put('/:paymentId', async (request, response, next) => {
+router.put('/:paymentId', upload.single('receiptImage'), async (request, response, next) => {
   try {
-    response.json(await updatePayment(request.params.paymentId, request.body));
+    response.json(
+      await updatePayment(request.params.paymentId, parseRequestPayload(request), {
+        receiptImageFile: request.file,
+      })
+    );
   } catch (error) {
     next(error);
   }

@@ -25,6 +25,28 @@ function authHeaders(token) {
   };
 }
 
+function isFileLike(value) {
+  return (
+    value &&
+    typeof value === 'object' &&
+    typeof value.name === 'string' &&
+    typeof value.size === 'number'
+  );
+}
+
+function createMultipartPayload(payload, fileEntries) {
+  const formData = new FormData();
+  formData.append('payload', JSON.stringify(payload));
+
+  fileEntries.forEach(([fieldName, fileValue]) => {
+    if (isFileLike(fileValue)) {
+      formData.append(fieldName, fileValue);
+    }
+  });
+
+  return formData;
+}
+
 export function loginAdmin(credentials) {
   return request(() => api.post('/auth/login', credentials));
 }
@@ -42,11 +64,21 @@ export function getResidents(token) {
 }
 
 export function createResident(token, payload) {
-  return request(() => api.post('/residents', payload, authHeaders(token)));
+  const { profileImageFile, ...residentPayload } = payload;
+  const requestPayload = isFileLike(profileImageFile)
+    ? createMultipartPayload(residentPayload, [['profileImage', profileImageFile]])
+    : residentPayload;
+
+  return request(() => api.post('/residents', requestPayload, authHeaders(token)));
 }
 
 export function updateResident(token, residentId, payload) {
-  return request(() => api.put(`/residents/${residentId}`, payload, authHeaders(token)));
+  const { profileImageFile, ...residentPayload } = payload;
+  const requestPayload = isFileLike(profileImageFile)
+    ? createMultipartPayload(residentPayload, [['profileImage', profileImageFile]])
+    : residentPayload;
+
+  return request(() => api.put(`/residents/${residentId}`, requestPayload, authHeaders(token)));
 }
 
 export function transferResident(token, residentId, payload) {
@@ -66,11 +98,21 @@ export function getPaymentLotDetails(token, residentId, lotId) {
 }
 
 export function createPayment(token, payload) {
-  return request(() => api.post('/payments', payload, authHeaders(token)));
+  const { receiptImageFile, ...paymentPayload } = payload;
+  const requestPayload = isFileLike(receiptImageFile)
+    ? createMultipartPayload(paymentPayload, [['receiptImage', receiptImageFile]])
+    : paymentPayload;
+
+  return request(() => api.post('/payments', requestPayload, authHeaders(token)));
 }
 
 export function updatePayment(token, paymentId, payload) {
-  return request(() => api.put(`/payments/${paymentId}`, payload, authHeaders(token)));
+  const { receiptImageFile, ...paymentPayload } = payload;
+  const requestPayload = isFileLike(receiptImageFile)
+    ? createMultipartPayload(paymentPayload, [['receiptImage', receiptImageFile]])
+    : paymentPayload;
+
+  return request(() => api.put(`/payments/${paymentId}`, requestPayload, authHeaders(token)));
 }
 
 export function deletePayment(token, paymentId) {
@@ -83,4 +125,8 @@ export function searchResidentByDetails(params) {
 
 export function searchResidentById(residentId) {
   return request(() => api.get('/public/resident-search', { params: { residentId } }));
+}
+
+export function getPublicOccupancySummary() {
+  return request(() => api.get('/public/occupancy-summary'));
 }

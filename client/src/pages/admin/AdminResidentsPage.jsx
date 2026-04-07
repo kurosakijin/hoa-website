@@ -10,6 +10,46 @@ import {
   updateResident,
 } from '../../services/api';
 import { formatCurrency } from '../../utils/format';
+import { formatResidentSortableName } from '../../utils/middleInitial';
+
+function getResidentInitials(resident) {
+  return [resident.firstName?.[0], resident.lastName?.[0]].filter(Boolean).join('').toUpperCase() || 'SH';
+}
+
+function isLotLocked(lot) {
+  return Number(lot?.totalBalance) > 0 && Number(lot?.remainingBalance) <= 0;
+}
+
+function getLockedLotCount(resident) {
+  return resident.lots.filter((lot) => lot.isActive !== false && isLotLocked(lot)).length;
+}
+
+function hasTransferableLots(resident) {
+  return resident.lots.some((lot) => lot.isActive !== false && !isLotLocked(lot));
+}
+
+function getResidentStatus(resident) {
+  const lockedLotCount = getLockedLotCount(resident);
+
+  if (resident.totalBalance > 0 && resident.remainingBalance <= 0) {
+    return {
+      className: 'status-tag',
+      label: 'Fully paid and locked',
+    };
+  }
+
+  if (lockedLotCount > 0) {
+    return {
+      className: 'status-tag status-tag--violet',
+      label: `${lockedLotCount} locked lot${lockedLotCount > 1 ? 's' : ''}`,
+    };
+  }
+
+  return {
+    className: 'status-tag status-tag--danger',
+    label: 'With balance',
+  };
+}
 
 function AdminResidentsPage() {
   const { token } = useAuth();
@@ -41,12 +81,34 @@ function AdminResidentsPage() {
     }
 
     return residents.filter((resident) =>
-      [resident.lastName, resident.firstName, resident.contactNumber, resident.address, resident.residentCode]
+      [
+        resident.lastName,
+        resident.firstName,
+        resident.middleName,
+        resident.contactNumber,
+        resident.address,
+        resident.residentCode,
+        resident.fullName,
+        ...resident.lots.map((lot) => `${lot.block} ${lot.lotNumber}`),
+      ]
         .join(' ')
         .toLowerCase()
         .includes(query)
     );
   }, [residents, search]);
+
+  const residentStats = useMemo(() => {
+    const totalLots = residents.reduce((sum, resident) => sum + resident.lots.length, 0);
+    const outstandingResidents = residents.filter((resident) => resident.remainingBalance > 0).length;
+    const totalOutstanding = residents.reduce((sum, resident) => sum + resident.remainingBalance, 0);
+
+    return {
+      totalResidents: residents.length,
+      totalLots,
+      outstandingResidents,
+      totalOutstanding,
+    };
+  }, [residents]);
 
   async function handleCreate(payload) {
     await createResident(token, payload);
@@ -82,22 +144,22 @@ function AdminResidentsPage() {
 
   return (
     <div className="space-y-6">
-      <section className="surface-card p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <section className="surface-card resident-directory-shell p-6">
+        <div className="resident-directory-hero">
           <div>
             <p className="eyebrow">Resident management</p>
             <h2 className="mt-2 text-2xl font-semibold text-white">Admin resident directory</h2>
-            <p className="mt-2 text-sm text-slate-400">
-              Residents are listed from last name to first name, with balances and modal actions for edit, transfer, and forfeiture.
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
+              Review residents by name, contact number, address, assigned lots, balances, and profile photo. The directory now uses a list layout so long names stay readable.
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="resident-directory-toolbar">
             <input
-              className="admin-search min-w-[260px]"
+              className="admin-search min-w-[280px]"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search resident, contact, address, or ID..."
+              placeholder="Search resident, address, block, lot, or ID..."
             />
             <button type="button" className="action-button action-button--primary" onClick={() => setIsCreateOpen(true)}>
               Add resident
@@ -105,50 +167,123 @@ function AdminResidentsPage() {
           </div>
         </div>
 
-        {error ? <p className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
-
-        <div className="mt-6 overflow-x-auto">
-          <table className="w-full min-w-[980px] text-left text-sm">
-            <thead className="text-xs uppercase tracking-[0.24em] text-slate-500">
-              <tr>
-                <th className="pb-3">Last name</th>
-                <th className="pb-3">First name</th>
-                <th className="pb-3">Contact number</th>
-                <th className="pb-3">Address</th>
-                <th className="pb-3">Remaining balance</th>
-                <th className="pb-3">Total balance</th>
-                <th className="pb-3">Resident ID</th>
-                <th className="pb-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredResidents.map((resident) => (
-                <tr key={resident.id} className="border-t border-white/8 text-slate-300">
-                  <td className="py-4 font-medium text-white">{resident.lastName}</td>
-                  <td className="py-4">{resident.firstName}</td>
-                  <td className="py-4">{resident.contactNumber}</td>
-                  <td className="py-4">{resident.address}</td>
-                  <td className="py-4">{formatCurrency(resident.remainingBalance)}</td>
-                  <td className="py-4">{formatCurrency(resident.totalBalance)}</td>
-                  <td className="py-4">{resident.residentCode}</td>
-                  <td className="py-4">
-                    <div className="flex justify-end gap-2">
-                      <button type="button" className="table-action" onClick={() => setEditingResident(resident)}>
-                        Edit
-                      </button>
-                      <button type="button" className="table-action" onClick={() => setTransferResidentTarget(resident)}>
-                        Transfer
-                      </button>
-                      <button type="button" className="table-action table-action--danger" onClick={() => handleDelete(resident.id)}>
-                        Forfeit
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="resident-directory-summary">
+          <div className="resident-directory-summary__item">
+            <span>Total residents</span>
+            <strong>{residentStats.totalResidents}</strong>
+          </div>
+          <div className="resident-directory-summary__item">
+            <span>Assigned lots</span>
+            <strong>{residentStats.totalLots}</strong>
+          </div>
+          <div className="resident-directory-summary__item">
+            <span>Residents with balance</span>
+            <strong>{residentStats.outstandingResidents}</strong>
+          </div>
+          <div className="resident-directory-summary__item">
+            <span>Total outstanding</span>
+            <strong>{formatCurrency(residentStats.totalOutstanding)}</strong>
+          </div>
         </div>
+
+        {error ? <p className="mt-5 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
+
+        {filteredResidents.length ? (
+          <div className="resident-directory-grid">
+            {filteredResidents.map((resident) => {
+              const residentStatus = getResidentStatus(resident);
+              const residentHasLockedLots = getLockedLotCount(resident) > 0;
+              const residentHasTransferableLots = hasTransferableLots(resident);
+              const transferTitle = residentHasTransferableLots
+                ? 'Transfer an unpaid assigned lot to a new resident.'
+                : residentHasLockedLots
+                  ? 'Fully paid lots are locked and cannot be transferred.'
+                  : 'No active lot is available to transfer.';
+
+              return (
+                <article key={resident.id} className="resident-directory-card resident-directory-card--list">
+                <div className="resident-directory-card__identity">
+                  <div className="resident-directory-card__avatar resident-directory-card__avatar--image">
+                    {resident.profileImageUrl ? (
+                      <img src={resident.profileImageUrl} alt={resident.fullName} className="resident-directory-card__avatar-image" />
+                    ) : (
+                      <span>{getResidentInitials(resident)}</span>
+                    )}
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="resident-directory-card__eyebrow">Resident record</p>
+                    <h3 className="resident-directory-card__name">{formatResidentSortableName(resident)}</h3>
+                    <p className="resident-directory-card__sub">{resident.residentCode}</p>
+                  </div>
+                </div>
+
+                <div className="resident-directory-card__meta resident-directory-card__meta--list">
+                  <div className="resident-directory-card__meta-item">
+                    <span>Contact number</span>
+                    <strong>{resident.contactNumber}</strong>
+                  </div>
+                  <div className="resident-directory-card__meta-item">
+                    <span>Address</span>
+                    <strong className="resident-directory-card__address">{resident.address}</strong>
+                  </div>
+                  <div className="resident-directory-card__meta-item">
+                    <span>Assigned lots</span>
+                    <strong className="resident-directory-card__lot-inline">
+                      {resident.lots.map((lot) => `Block ${lot.block} / Lot ${lot.lotNumber}`).join(', ')}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="resident-directory-card__balances resident-directory-card__balances--list">
+                  <div className="resident-directory-card__balance">
+                    <span>Remaining balance</span>
+                    <strong>{formatCurrency(resident.remainingBalance)}</strong>
+                  </div>
+                  <div className="resident-directory-card__balance">
+                    <span>Total balance</span>
+                    <strong>{formatCurrency(resident.totalBalance)}</strong>
+                  </div>
+                </div>
+
+                <div className="resident-directory-card__actions resident-directory-card__actions--list">
+                  <span className={residentStatus.className}>{residentStatus.label}</span>
+                  <button type="button" className="table-action" onClick={() => setEditingResident(resident)}>
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="table-action"
+                    onClick={() => setTransferResidentTarget(resident)}
+                    disabled={!residentHasTransferableLots}
+                    title={transferTitle}
+                  >
+                    Transfer
+                  </button>
+                  <button
+                    type="button"
+                    className="table-action table-action--danger"
+                    onClick={() => handleDelete(resident.id)}
+                    disabled={residentHasLockedLots}
+                    title={
+                      residentHasLockedLots
+                        ? 'Residents with fully paid lots are locked and cannot be forfeited.'
+                        : 'Forfeit this resident record and delete the linked payment history.'
+                    }
+                  >
+                    Forfeit
+                  </button>
+                </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="resident-directory-empty">
+            <p className="text-base font-semibold text-white">No residents matched your search.</p>
+            <p className="mt-2 text-sm text-slate-400">Try another resident name, address, resident ID, block, or lot number.</p>
+          </div>
+        )}
       </section>
 
       <ResidentFormModal

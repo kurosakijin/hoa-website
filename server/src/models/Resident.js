@@ -18,10 +18,12 @@ const residentSchema = new mongoose.Schema(
   {
     residentCode: { type: String, required: true, unique: true, index: true, trim: true },
     firstName: { type: String, required: true, trim: true },
+    middleName: { type: String, default: '', trim: true },
     lastName: { type: String, required: true, trim: true },
     contactNumber: { type: String, required: true, trim: true },
     address: { type: String, required: true, trim: true },
-    status: { type: String, enum: ['Owner', 'Tenant'], default: 'Owner' },
+    profileImageUrl: { type: String, default: '', trim: true },
+    profileImagePublicId: { type: String, default: '', trim: true },
     isActive: { type: Boolean, default: true },
     lots: {
       type: [lotSchema],

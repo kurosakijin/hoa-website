@@ -14,24 +14,24 @@ export const fallbackDashboard = {
     { month: 'Jun', amount: 221000 },
   ],
   recentPayments: [
-    { id: 'p1', residentName: 'Maria Santos', lotNumber: 'A-14', amount: 3500, status: 'Paid', date: '2026-04-02' },
-    { id: 'p2', residentName: 'Daniel Cruz', lotNumber: 'C-07', amount: 3500, status: 'Pending', date: '2026-04-01' },
-    { id: 'p3', residentName: 'Ana Lim', lotNumber: 'B-11', amount: 7000, status: 'Paid', date: '2026-03-30' },
+    { id: 'p1', residentName: 'Santos, Maria A.', lotNumber: 'A-14', amount: 3500, status: 'Paid', date: '2026-04-02' },
+    { id: 'p2', residentName: 'Cruz, Daniel R.', lotNumber: 'C-07', amount: 3500, status: 'Pending', date: '2026-04-01' },
+    { id: 'p3', residentName: 'Lim, Ana L.', lotNumber: 'B-11', amount: 7000, status: 'Paid', date: '2026-03-30' },
   ],
 };
 
 export const fallbackResidents = [
-  { id: 'r1', fullName: 'Maria Santos', lotNumber: 'A-14', status: 'Owner', contactNumber: '09175551024', balance: 0 },
-  { id: 'r2', fullName: 'Daniel Cruz', lotNumber: 'C-07', status: 'Tenant', contactNumber: '09175554431', balance: 3500 },
-  { id: 'r3', fullName: 'Ana Lim', lotNumber: 'B-11', status: 'Owner', contactNumber: '09175558821', balance: 0 },
-  { id: 'r4', fullName: 'Paolo Reyes', lotNumber: 'D-03', status: 'Owner', contactNumber: '09175556642', balance: 1750 },
+  { id: 'r1', fullName: 'Maria A. Santos', lotNumber: 'A-14', contactNumber: '09175551024', balance: 0 },
+  { id: 'r2', fullName: 'Daniel R. Cruz', lotNumber: 'C-07', contactNumber: '09175554431', balance: 3500 },
+  { id: 'r3', fullName: 'Ana L. Lim', lotNumber: 'B-11', contactNumber: '09175558821', balance: 0 },
+  { id: 'r4', fullName: 'Paolo M. Reyes', lotNumber: 'D-03', contactNumber: '09175556642', balance: 1750 },
 ];
 
 export const fallbackPayments = [
-  { id: 'p1', residentName: 'Maria Santos', lotNumber: 'A-14', amount: 3500, method: 'GCash', status: 'Paid', date: '2026-04-02' },
-  { id: 'p2', residentName: 'Daniel Cruz', lotNumber: 'C-07', amount: 3500, method: 'Bank Transfer', status: 'Pending', date: '2026-04-01' },
-  { id: 'p3', residentName: 'Ana Lim', lotNumber: 'B-11', amount: 7000, method: 'Cash', status: 'Paid', date: '2026-03-30' },
-  { id: 'p4', residentName: 'Paolo Reyes', lotNumber: 'D-03', amount: 1750, method: 'Check', status: 'Overdue', date: '2026-03-25' },
+  { id: 'p1', residentName: 'Santos, Maria A.', lotNumber: 'A-14', amount: 3500, method: 'GCash', status: 'Paid', date: '2026-04-02' },
+  { id: 'p2', residentName: 'Cruz, Daniel R.', lotNumber: 'C-07', amount: 3500, method: 'Bank Transfer', status: 'Pending', date: '2026-04-01' },
+  { id: 'p3', residentName: 'Lim, Ana L.', lotNumber: 'B-11', amount: 7000, method: 'Cash', status: 'Paid', date: '2026-03-30' },
+  { id: 'p4', residentName: 'Reyes, Paolo M.', lotNumber: 'D-03', amount: 1750, method: 'Bank Transfer', status: 'Overdue', date: '2026-03-25' },
 ];
 
 export const fallbackAdmin = {
