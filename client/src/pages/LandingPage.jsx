@@ -95,12 +95,6 @@ function LandingPage() {
 
             <div className="flex items-center gap-3">
               <ThemeToggleButton compact />
-              <Link
-                to="/resident-page"
-                className="inline-flex min-h-[2.85rem] items-center rounded-sm bg-[#c79d47] px-4 py-3 text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-[#fff8ee] transition hover:-translate-y-0.5 hover:bg-[#d1aa5a]"
-              >
-                Resident Page
-              </Link>
             </div>
           </div>
 
