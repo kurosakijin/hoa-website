@@ -1683,17 +1683,18 @@ textarea {
 }
 
 .resident-chat-widget__composer {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: flex-end;
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 1.05rem;
   background: rgba(16, 17, 19, 0.78);
+  overflow: hidden;
   padding: 0.8rem;
 }
 
-.resident-chat-widget__composer-main {
+.resident-chat-widget__composer-row {
+  align-items: flex-end;
   display: grid;
   gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr) auto;
   min-width: 0;
 }
 
@@ -1703,7 +1704,8 @@ textarea {
 
 .resident-chat-widget__composer-submit {
   align-self: flex-end;
-  min-width: 6.75rem;
+  min-width: 6rem;
+  white-space: nowrap;
 }
 
 .resident-chat-widget__composer textarea,
@@ -1930,9 +1932,11 @@ textarea {
 
 .chat-composer-attachment--resident {
   min-width: 0;
+  padding-top: 0.1rem;
 }
 
 .chat-composer-attachment--resident .chat-composer-attachment__row {
+  align-items: center;
   justify-content: space-between;
 }
 
@@ -2415,19 +2419,6 @@ html[data-theme='light'] {
     flex-direction: column;
   }
 
-  .resident-chat-widget__status {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .resident-chat-widget__composer {
-    grid-template-columns: 1fr;
-  }
-
-  .resident-chat-widget__composer-submit {
-    width: 100%;
-  }
-
   .resident-chat-widget {
     left: 0.5rem !important;
     right: 0.5rem !important;
@@ -2474,9 +2465,7 @@ html[data-theme='light'] {
     flex-direction: column;
   }
 
-  .resident-chat-widget__connect-actions .action-button,
-  .resident-chat-widget__composer .action-button,
-  .resident-chat-widget__composer-submit {
+  .resident-chat-widget__connect-actions .action-button {
     width: 100%;
   }
 
