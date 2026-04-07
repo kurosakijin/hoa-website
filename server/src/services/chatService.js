@@ -5,6 +5,7 @@ const { formatResidentFullName } = require('../utils/middleInitial');
 
 const ADMIN_PRESENCE_KEY = 'primary';
 const ADMIN_ONLINE_WINDOW_MS = 90 * 1000;
+const ADMIN_TYPING_WINDOW_MS = 5 * 1000;
 
 function trimValue(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -66,6 +67,25 @@ function toThreadDetail(thread) {
   };
 }
 
+function isAdminTypingForThread(adminPresence, threadId) {
+  if (!adminPresence?.isOnline || !adminPresence?.typingAt || !adminPresence?.typingThreadId || !threadId) {
+    return false;
+  }
+
+  const typingAt = new Date(adminPresence.typingAt);
+  return (
+    adminPresence.typingThreadId === String(threadId) &&
+    Date.now() - typingAt.getTime() <= ADMIN_TYPING_WINDOW_MS
+  );
+}
+
+function withResidentThreadStatus(threadPayload, adminPresence) {
+  return {
+    ...threadPayload,
+    isAdminTyping: isAdminTypingForThread(adminPresence, threadPayload.id),
+  };
+}
+
 function toResidentChatIdentity(resident) {
   return {
     id: resident._id.toString(),
@@ -79,11 +99,17 @@ function toAdminPresencePayload(presence, fallbackAdminName) {
   const lastSeenAt = presence?.lastSeenAt ? new Date(presence.lastSeenAt) : null;
   const isOnline =
     Boolean(lastSeenAt) && Date.now() - lastSeenAt.getTime() <= ADMIN_ONLINE_WINDOW_MS;
+  const typingAt = presence?.typingAt ? new Date(presence.typingAt) : null;
 
   return {
     adminName: trimValue(presence?.adminName) || fallbackAdminName || process.env.ADMIN_NAME || 'Sitio Hiyas Admin',
     isOnline,
     lastSeenAt: lastSeenAt ? lastSeenAt.toISOString() : null,
+    typingThreadId: trimValue(presence?.typingThreadId),
+    typingAt:
+      isOnline && typingAt && Date.now() - typingAt.getTime() <= ADMIN_TYPING_WINDOW_MS
+        ? typingAt.toISOString()
+        : null,
   };
 }
 
@@ -141,9 +167,10 @@ async function getResidentChatThread(residentCode) {
   return {
     resident: toResidentChatIdentity(resident),
     adminPresence,
-    thread: thread
-      ? toThreadDetail(thread)
-      : {
+    thread: withResidentThreadStatus(
+      thread
+        ? toThreadDetail(thread)
+        : {
           id: '',
           residentId: resident._id.toString(),
           residentCode: resident.residentCode,
@@ -157,6 +184,8 @@ async function getResidentChatThread(residentCode) {
           totalMessages: 0,
           messages: [],
         },
+      adminPresence
+    ),
   };
 }
 
@@ -180,10 +209,6 @@ async function ensureResidentChatThread(resident) {
 async function sendResidentChatMessage(residentCode, body) {
   const resident = await findResidentByCode(residentCode);
   const adminPresence = await getAdminPresenceStatus();
-
-  if (!adminPresence.isOnline) {
-    throw new Error('Admin is currently offline. Please try again when the admin is online.');
-  }
 
   const messageBody = sanitizeMessageBody(body);
 
@@ -214,7 +239,7 @@ async function sendResidentChatMessage(residentCode, body) {
   return {
     resident: toResidentChatIdentity(resident),
     adminPresence,
-    thread: toThreadDetail(thread),
+    thread: withResidentThreadStatus(toThreadDetail(thread), adminPresence),
   };
 }
 
@@ -273,6 +298,19 @@ async function sendAdminChatMessage(threadId, body, admin) {
   thread.unreadForAdmin = 0;
   await thread.save();
 
+  await AdminPresence.updateOne(
+    { key: ADMIN_PRESENCE_KEY },
+    {
+      $set: {
+        adminName: getAdminDisplayName(admin),
+        lastSeenAt: new Date(),
+        typingThreadId: '',
+        typingAt: null,
+      },
+    },
+    { upsert: true }
+  );
+
   return {
     adminPresence: await getAdminPresenceStatus(getAdminDisplayName(admin)),
     thread: toThreadDetail(thread),
@@ -306,12 +344,68 @@ async function clearAdminPresence(admin) {
       $set: {
         adminName,
         lastSeenAt: new Date(0),
+        typingThreadId: '',
+        typingAt: null,
       },
     },
     { upsert: true }
   );
 
   return getAdminPresenceStatus(adminName);
+}
+
+async function recordAdminTyping(threadId, admin) {
+  const adminName = getAdminDisplayName(admin);
+
+  await AdminPresence.updateOne(
+    { key: ADMIN_PRESENCE_KEY },
+    {
+      $set: {
+        adminName,
+        lastSeenAt: new Date(),
+        typingThreadId: String(threadId || ''),
+        typingAt: new Date(),
+      },
+    },
+    { upsert: true }
+  );
+
+  return getAdminPresenceStatus(adminName);
+}
+
+async function clearAdminTyping(threadId, admin) {
+  const adminName = getAdminDisplayName(admin);
+  const presence = await AdminPresence.findOne({ key: ADMIN_PRESENCE_KEY });
+
+  if (!presence) {
+    return getAdminPresenceStatus(adminName);
+  }
+
+  if (!threadId || presence.typingThreadId === String(threadId)) {
+    presence.adminName = adminName;
+    presence.typingThreadId = '';
+    presence.typingAt = null;
+    await presence.save();
+  }
+
+  return getAdminPresenceStatus(adminName);
+}
+
+async function clearChatThread(threadId, admin) {
+  const thread = await ChatThread.findById(threadId);
+
+  if (!thread) {
+    throw new Error('Chat thread was not found.');
+  }
+
+  await ChatThread.deleteOne({ _id: thread._id });
+  await clearAdminTyping(thread._id.toString(), admin);
+
+  return {
+    cleared: true,
+    threadId: thread._id.toString(),
+    residentCode: thread.residentCode,
+  };
 }
 
 async function syncResidentChatThread(resident) {
@@ -339,6 +433,9 @@ module.exports = {
   sendAdminChatMessage,
   recordAdminPresence,
   clearAdminPresence,
+  recordAdminTyping,
+  clearAdminTyping,
+  clearChatThread,
   syncResidentChatThread,
   deleteResidentChatThread,
 };

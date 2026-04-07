@@ -1,7 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { heartbeatAdminChat, setAdminChatOffline } from '../services/api';
+import {
+  getAdminChatThreads,
+  heartbeatAdminChat,
+  setAdminChatOffline,
+} from '../services/api';
 import Seo from './Seo';
 import ThemeToggleButton from './ThemeToggleButton';
 
@@ -15,16 +19,71 @@ const adminNavItems = [
 function AdminLayout() {
   const { admin, logout, token } = useAuth();
   const navigate = useNavigate();
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
+  const previousUnreadCountRef = useRef(null);
+  const notificationPermissionRequestedRef = useRef(false);
+
+  async function refreshChatUnread({ notify = false } = {}) {
+    if (!token) {
+      return;
+    }
+
+    try {
+      const data = await getAdminChatThreads(token);
+      const unreadCount = data.threads.reduce(
+        (sum, thread) => sum + (Number(thread.unreadForAdmin) || 0),
+        0
+      );
+
+      setChatUnreadCount(unreadCount);
+
+      const previousUnreadCount = previousUnreadCountRef.current;
+      const canNotify =
+        notify &&
+        typeof window !== 'undefined' &&
+        'Notification' in window &&
+        window.Notification.permission === 'granted';
+
+      if (canNotify && unreadCount > 0) {
+        if (previousUnreadCount === null || unreadCount > previousUnreadCount) {
+          const latestThread = data.threads.find((thread) => thread.unreadForAdmin > 0) || data.threads[0];
+          new window.Notification('Resident chat update', {
+            body:
+              previousUnreadCount === null
+                ? `You have ${unreadCount} unread resident message${unreadCount === 1 ? '' : 's'}.`
+                : `${latestThread?.residentName || 'A resident'} sent a new message.`,
+          });
+        }
+      }
+
+      previousUnreadCountRef.current = unreadCount;
+    } catch (_error) {
+      setChatUnreadCount(0);
+    }
+  }
 
   useEffect(() => {
     if (!token) {
       return undefined;
     }
 
+    if (
+      typeof window !== 'undefined' &&
+      'Notification' in window &&
+      window.Notification.permission === 'default' &&
+      !notificationPermissionRequestedRef.current
+    ) {
+      notificationPermissionRequestedRef.current = true;
+      window.Notification.requestPermission().catch(() => {});
+    }
+
     heartbeatAdminChat(token).catch(() => {});
+    refreshChatUnread({ notify: true });
+
     const intervalId = window.setInterval(() => {
       heartbeatAdminChat(token).catch(() => {});
-    }, 30000);
+      refreshChatUnread({ notify: true });
+    }, 5000);
 
     return () => {
       window.clearInterval(intervalId);
@@ -68,7 +127,12 @@ function AdminLayout() {
                     `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`
                   }
                 >
-                  {item.label}
+                  <span className="sidebar-link__content">
+                    <span>{item.label}</span>
+                    {item.to === '/admin/chat' && chatUnreadCount ? (
+                      <strong className="sidebar-link__badge">{chatUnreadCount}</strong>
+                    ) : null}
+                  </span>
                 </NavLink>
               ))}
             </nav>

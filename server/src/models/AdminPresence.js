@@ -18,6 +18,15 @@ const adminPresenceSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    typingThreadId: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    typingAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );

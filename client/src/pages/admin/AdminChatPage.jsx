@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
+  clearAdminChatThread,
+  clearAdminChatTyping,
   getAdminChatThread,
   getAdminChatThreads,
   sendAdminChatMessage,
+  setAdminChatTyping,
 } from '../../services/api';
 import { formatDate } from '../../utils/format';
 
@@ -27,7 +30,10 @@ function AdminChatPage() {
   const [isThreadsLoading, setIsThreadsLoading] = useState(true);
   const [isThreadLoading, setIsThreadLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const [error, setError] = useState('');
+  const typingTimeoutRef = useRef(null);
+  const selectedThreadIdRef = useRef('');
 
   async function loadThreads({ silent = false } = {}) {
     if (!silent) {
@@ -72,6 +78,46 @@ function AdminChatPage() {
     }
   }
 
+  async function stopTyping(threadId) {
+    const targetThreadId = threadId || selectedThreadIdRef.current;
+
+    if (!targetThreadId) {
+      return;
+    }
+
+    if (typingTimeoutRef.current) {
+      window.clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+
+    await clearAdminChatTyping(token, targetThreadId).catch(() => {});
+  }
+
+  function handleComposerChange(event) {
+    const nextValue = event.target.value;
+    setMessage(nextValue);
+
+    if (!selectedThreadId) {
+      return;
+    }
+
+    if (!nextValue.trim()) {
+      stopTyping(selectedThreadId);
+      return;
+    }
+
+    setAdminChatTyping(token, selectedThreadId).catch(() => {});
+
+    if (typingTimeoutRef.current) {
+      window.clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = window.setTimeout(() => {
+      clearAdminChatTyping(token, selectedThreadId).catch(() => {});
+      typingTimeoutRef.current = null;
+    }, 2200);
+  }
+
   useEffect(() => {
     loadThreads();
   }, [token]);
@@ -89,6 +135,16 @@ function AdminChatPage() {
   }, [threads, selectedThreadId]);
 
   useEffect(() => {
+    const previousThreadId = selectedThreadIdRef.current;
+    selectedThreadIdRef.current = selectedThreadId;
+
+    if (previousThreadId && previousThreadId !== selectedThreadId) {
+      stopTyping(previousThreadId);
+      setMessage('');
+    }
+  }, [selectedThreadId]);
+
+  useEffect(() => {
     if (!selectedThreadId) {
       return undefined;
     }
@@ -96,7 +152,7 @@ function AdminChatPage() {
     loadThreadDetail(selectedThreadId);
     const intervalId = window.setInterval(() => {
       loadThreadDetail(selectedThreadId, { silent: true });
-    }, 6000);
+    }, 2500);
 
     return () => {
       window.clearInterval(intervalId);
@@ -106,12 +162,18 @@ function AdminChatPage() {
   useEffect(() => {
     const intervalId = window.setInterval(() => {
       loadThreads({ silent: true });
-    }, 7000);
+    }, 3500);
 
     return () => {
       window.clearInterval(intervalId);
     };
   }, [token]);
+
+  useEffect(() => {
+    return () => {
+      stopTyping(selectedThreadIdRef.current);
+    };
+  }, []);
 
   async function handleSendMessage(event) {
     event.preventDefault();
@@ -122,6 +184,7 @@ function AdminChatPage() {
 
     try {
       setIsSending(true);
+      await stopTyping(selectedThreadId);
       const data = await sendAdminChatMessage(token, selectedThreadId, { message });
       setSelectedThread(data.thread);
       setAdminPresence(data.adminPresence);
@@ -132,6 +195,31 @@ function AdminChatPage() {
       setError(sendError.message);
     } finally {
       setIsSending(false);
+    }
+  }
+
+  async function handleClearThread() {
+    if (!selectedThreadId) {
+      return;
+    }
+
+    if (!window.confirm('Clear this chat thread? This will delete the whole conversation for both the resident and admin.')) {
+      return;
+    }
+
+    try {
+      setIsClearing(true);
+      await stopTyping(selectedThreadId);
+      await clearAdminChatThread(token, selectedThreadId);
+      setSelectedThread(null);
+      setSelectedThreadId('');
+      setMessage('');
+      setError('');
+      await loadThreads({ silent: true });
+    } catch (clearError) {
+      setError(clearError.message);
+    } finally {
+      setIsClearing(false);
     }
   }
 
@@ -148,7 +236,7 @@ function AdminChatPage() {
             <p className="eyebrow">Resident chat</p>
             <h2 className="mt-2 text-2xl font-semibold text-white">Resident to admin conversations</h2>
             <p className="mt-2 text-sm text-slate-400">
-              Residents can open chat with their resident ID. When admin is online, they can send live messages and you can reply from this workspace.
+              Residents can open chat with their resident ID, leave messages while you are offline, and get near real-time replies once you are back in the admin workspace.
             </p>
           </div>
 
@@ -168,7 +256,7 @@ function AdminChatPage() {
           <aside className="chat-thread-list">
             <div className="chat-thread-list__header">
               <h3 className="text-lg font-semibold text-white">Open resident threads</h3>
-              <p className="text-sm text-slate-400">Unread resident messages are highlighted here.</p>
+              <p className="text-sm text-slate-400">Unread resident messages are highlighted here and also reflected in the admin sidebar badge.</p>
             </div>
 
             <div className="chat-thread-list__items">
@@ -182,7 +270,7 @@ function AdminChatPage() {
                 <div className="chat-empty-state">
                   <p className="text-sm font-semibold text-white">No resident chats yet.</p>
                   <p className="mt-2 text-sm text-slate-400">
-                    Once a resident sends a message using their resident ID, the thread will appear here.
+                    Once a resident opens chat with their resident ID and sends a message, the thread will appear here.
                   </p>
                 </div>
               ) : null}
@@ -249,9 +337,19 @@ function AdminChatPage() {
                     </div>
                   </div>
 
-                  <span className="status-tag status-tag--violet">
-                    {selectedThread?.messages?.length || 0} message{selectedThread?.messages?.length === 1 ? '' : 's'}
-                  </span>
+                  <div className="chat-panel__header-actions">
+                    <span className="status-tag status-tag--violet">
+                      {selectedThread?.messages?.length || 0} message{selectedThread?.messages?.length === 1 ? '' : 's'}
+                    </span>
+                    <button
+                      type="button"
+                      className="action-button action-button--danger"
+                      onClick={handleClearThread}
+                      disabled={isClearing}
+                    >
+                      {isClearing ? 'Clearing...' : 'Clear solved chat'}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="chat-messages">
@@ -280,7 +378,7 @@ function AdminChatPage() {
                     <div className="chat-empty-state">
                       <p className="text-sm font-semibold text-white">No messages in this thread yet.</p>
                       <p className="mt-2 text-sm text-slate-400">
-                        The conversation will appear here as soon as a resident sends a message.
+                        Residents can still leave the first message even while you are offline.
                       </p>
                     </div>
                   ) : null}
@@ -292,13 +390,13 @@ function AdminChatPage() {
                     <textarea
                       rows="3"
                       value={message}
-                      onChange={(event) => setMessage(event.target.value)}
+                      onChange={handleComposerChange}
                       placeholder="Type your reply to the resident..."
                     />
                   </label>
                   <div className="chat-composer__actions">
                     <span className="text-sm text-slate-400">
-                      Residents can send messages only while admin is online.
+                      Residents will see your reply on their side almost immediately, and they can also see when you are typing.
                     </span>
                     <button type="submit" className="action-button action-button--primary" disabled={isSending || !message.trim()}>
                       {isSending ? 'Sending...' : 'Send reply'}

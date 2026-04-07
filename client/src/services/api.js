@@ -155,6 +155,18 @@ export function sendAdminChatMessage(token, threadId, payload) {
   return request(() => api.post(`/chat/threads/${threadId}/messages`, payload, authHeaders(token)));
 }
 
+export function clearAdminChatThread(token, threadId) {
+  return request(() => api.delete(`/chat/threads/${threadId}`, authHeaders(token)));
+}
+
+export function setAdminChatTyping(token, threadId) {
+  return request(() => api.post('/chat/typing', { threadId }, authHeaders(token)));
+}
+
+export function clearAdminChatTyping(token, threadId) {
+  return request(() => api.post('/chat/typing/stop', { threadId }, authHeaders(token)));
+}
+
 export function heartbeatAdminChat(token) {
   return request(() => api.post('/chat/presence/heartbeat', {}, authHeaders(token)));
 }

@@ -156,7 +156,7 @@ function ResidentPage() {
 
     const intervalId = window.setInterval(() => {
       loadResidentChat(connectedResidentId, { silent: true });
-    }, 7000);
+    }, 2500);
 
     return () => {
       window.clearInterval(intervalId);
@@ -222,6 +222,9 @@ function ResidentPage() {
             <Link to="/find-my-resident-info" className="action-button action-button--primary">
               Find My Resident Info
             </Link>
+            <a href="#resident-chat" className="action-button action-button--secondary">
+              Chat with Admin
+            </a>
           </div>
 
           <div className="mt-10 grid gap-4 md:grid-cols-3">
@@ -351,12 +354,12 @@ function ResidentPage() {
       </section>
 
       <section className="mx-auto mt-8 max-w-7xl px-4 lg:px-6">
-        <div className="resident-chat-shell">
+        <div id="resident-chat" className="resident-chat-shell">
           <article className="surface-card p-6">
             <p className="eyebrow">Resident support chat</p>
             <h2 className="mt-3 text-3xl font-semibold text-white">Message the admin with your resident ID</h2>
             <p className="mt-4 text-sm leading-7 text-slate-300">
-              Enter the resident ID created by the admin team to open your chat. Messages can be sent only while the admin is online, and the conversation refreshes automatically while this page stays open.
+              Enter the resident ID created by the admin team to open your chat. If the admin is offline, you can still leave a message here and it will wait for the admin when they return.
             </p>
 
             <form className="mt-6 space-y-4" onSubmit={handleChatConnect}>
@@ -433,6 +436,13 @@ function ResidentPage() {
               </span>
             </div>
 
+            {residentChat?.thread?.isAdminTyping ? (
+              <div className="chat-typing-indicator">
+                <span className="chat-typing-indicator__dot" />
+                <span>Admin is typing...</span>
+              </div>
+            ) : null}
+
             <div className="chat-messages">
               {residentChat?.thread?.messages?.length ? (
                 residentChat.thread.messages.map((chatItem) => (
@@ -451,7 +461,7 @@ function ResidentPage() {
                 <div className="chat-empty-state chat-empty-state--panel">
                   <p className="text-base font-semibold text-white">No messages yet.</p>
                   <p className="mt-2 text-sm text-slate-400">
-                    Open your resident chat with your resident ID first. When the admin is online, you can send a message from here.
+                    Open your resident chat with your resident ID first. You can leave a message here even when the admin is offline.
                   </p>
                 </div>
               )}
@@ -467,15 +477,15 @@ function ResidentPage() {
                   placeholder={
                     residentChat?.adminPresence?.isOnline
                       ? 'Type your message to the admin...'
-                      : 'Admin is offline right now. Wait for online status before sending.'
+                      : 'Admin is offline right now. Leave a message and the admin will see it when they return.'
                   }
-                  disabled={!residentChat?.resident || !residentChat?.adminPresence?.isOnline}
+                  disabled={!residentChat?.resident}
                 />
               </label>
 
               <div className="chat-composer__actions">
                 <span className="text-sm text-slate-400">
-                  Chat uses your resident ID so the admin can identify your record quickly.
+                  Chat uses your resident ID so the admin can identify your record quickly, even if you leave a message while the admin is offline.
                 </span>
                 <button
                   type="submit"
@@ -483,11 +493,10 @@ function ResidentPage() {
                   disabled={
                     isChatSending ||
                     !residentChat?.resident ||
-                    !residentChat?.adminPresence?.isOnline ||
                     !chatMessage.trim()
                   }
                 >
-                  {isChatSending ? 'Sending...' : 'Send message'}
+                  {isChatSending ? 'Sending...' : residentChat?.adminPresence?.isOnline ? 'Send message' : 'Leave message'}
                 </button>
               </div>
             </form>
