@@ -510,6 +510,17 @@ textarea {
 .turnstile-widget {
   margin-top: 1rem;
   min-height: 65px;
+  max-height: 65px;
+  overflow: hidden;
+  transition: max-height 180ms ease, margin-top 180ms ease, min-height 180ms ease, opacity 180ms ease;
+}
+
+.turnstile-widget.turnstile-widget--verified {
+  margin-top: 0;
+  min-height: 0;
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .turnstile-widget > div {

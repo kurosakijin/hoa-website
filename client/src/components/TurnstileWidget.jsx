@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 const TURNSTILE_SCRIPT_ID = 'cloudflare-turnstile-script';
@@ -41,12 +41,22 @@ function loadTurnstileScript() {
   return turnstileScriptPromise;
 }
 
-function TurnstileWidget({ action = 'submit', className = '', onError, onExpire, onVerify, resetKey = 0, size = 'normal' }) {
+function TurnstileWidget({
+  action = 'submit',
+  className = '',
+  hideOnSuccess = true,
+  onError,
+  onExpire,
+  onVerify,
+  resetKey = 0,
+  size = 'normal',
+}) {
   const elementRef = useRef(null);
   const widgetIdRef = useRef(null);
   const onVerifyRef = useRef(onVerify);
   const onErrorRef = useRef(onError);
   const onExpireRef = useRef(onExpire);
+  const [isVerified, setIsVerified] = useState(false);
 
   useEffect(() => {
     onVerifyRef.current = onVerify;
@@ -75,9 +85,18 @@ function TurnstileWidget({ action = 'submit', className = '', onError, onExpire,
 
         widgetIdRef.current = turnstile.render(elementRef.current, {
           action,
-          callback: (token) => onVerifyRef.current?.(token),
-          'error-callback': () => onErrorRef.current?.(),
-          'expired-callback': () => onExpireRef.current?.(),
+          callback: (token) => {
+            setIsVerified(true);
+            onVerifyRef.current?.(token);
+          },
+          'error-callback': () => {
+            setIsVerified(false);
+            onErrorRef.current?.();
+          },
+          'expired-callback': () => {
+            setIsVerified(false);
+            onExpireRef.current?.();
+          },
           sitekey: TURNSTILE_SITE_KEY,
           size,
           theme: 'auto',
@@ -105,6 +124,8 @@ function TurnstileWidget({ action = 'submit', className = '', onError, onExpire,
   }, [action, size]);
 
   useEffect(() => {
+    setIsVerified(false);
+
     if (window.turnstile && widgetIdRef.current !== null) {
       try {
         window.turnstile.reset(widgetIdRef.current);
@@ -118,7 +139,13 @@ function TurnstileWidget({ action = 'submit', className = '', onError, onExpire,
     return null;
   }
 
-  return <div ref={elementRef} className={`turnstile-widget ${className}`.trim()} />;
+  return (
+    <div
+      ref={elementRef}
+      aria-hidden={hideOnSuccess && isVerified ? true : undefined}
+      className={`turnstile-widget ${hideOnSuccess && isVerified ? 'turnstile-widget--verified' : ''} ${className}`.trim()}
+    />
+  );
 }
 
 export function isTurnstileConfigured() {
