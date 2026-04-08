@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import ImagePreviewModal from './ImagePreviewModal';
+import TurnstileWidget from './TurnstileWidget';
 import { formatDate } from '../utils/format';
 
 function AttachmentIcon() {
@@ -64,7 +65,11 @@ function ResidentChatWidget({
   onAttachmentImageChange,
   onAttachmentImageClear,
   onClose,
+  onTurnstileError,
+  onTurnstileExpire,
+  onTurnstileVerify,
   onToggleMinimized,
+  turnstileResetKey,
 }) {
   const widgetRef = useRef(null);
   const dragStateRef = useRef(null);
@@ -450,6 +455,15 @@ function ResidentChatWidget({
                     </div>
                   ) : null}
                 </div>
+                <TurnstileWidget
+                  action="resident_chat_message"
+                  className="resident-chat-widget__turnstile"
+                  resetKey={turnstileResetKey}
+                  size="compact"
+                  onVerify={onTurnstileVerify}
+                  onExpire={onTurnstileExpire}
+                  onError={onTurnstileError}
+                />
               </form>
             </>
           ) : null}

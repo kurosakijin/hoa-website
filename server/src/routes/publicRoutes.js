@@ -78,6 +78,7 @@ router.get('/chat-thread', async (request, response, next) => {
 router.post('/chat-message', uploadResidentChatAttachment, async (request, response, next) => {
   try {
     const payload = parseRequestPayload(request);
+    await verifyTurnstileToken(payload?.turnstileToken, request.ip);
 
     return response
       .status(201)

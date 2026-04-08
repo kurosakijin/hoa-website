@@ -41,7 +41,7 @@ function loadTurnstileScript() {
   return turnstileScriptPromise;
 }
 
-function TurnstileWidget({ action = 'submit', onError, onExpire, onVerify, resetKey = 0 }) {
+function TurnstileWidget({ action = 'submit', className = '', onError, onExpire, onVerify, resetKey = 0, size = 'normal' }) {
   const elementRef = useRef(null);
   const widgetIdRef = useRef(null);
 
@@ -64,6 +64,7 @@ function TurnstileWidget({ action = 'submit', onError, onExpire, onVerify, reset
           'error-callback': () => onError?.(),
           'expired-callback': () => onExpire?.(),
           sitekey: TURNSTILE_SITE_KEY,
+          size,
           theme: 'auto',
         });
       })
@@ -102,7 +103,7 @@ function TurnstileWidget({ action = 'submit', onError, onExpire, onVerify, reset
     return null;
   }
 
-  return <div ref={elementRef} className="turnstile-widget" />;
+  return <div ref={elementRef} className={`turnstile-widget ${className}`.trim()} />;
 }
 
 export function isTurnstileConfigured() {

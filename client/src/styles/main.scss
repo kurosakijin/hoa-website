@@ -516,6 +516,15 @@ textarea {
   max-width: 100%;
 }
 
+.resident-chat-widget__turnstile {
+  margin-top: 0.35rem;
+  align-self: flex-start;
+}
+
+.resident-chat-widget__turnstile > div {
+  transform-origin: left top;
+}
+
 .toast-viewport {
   position: fixed;
   right: clamp(0.8rem, 1vw + 0.55rem, 1.4rem);
@@ -3268,5 +3277,9 @@ html[data-theme='light'] {
   .resident-chat-widget__body {
     padding-left: 0.8rem;
     padding-right: 0.8rem;
+  }
+
+  .resident-chat-widget__turnstile {
+    width: 100%;
   }
 }

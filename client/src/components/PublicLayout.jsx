@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import ResidentChatWidget from './ResidentChatWidget';
 import PublicHeader from './PublicHeader';
+import { isTurnstileConfigured } from './TurnstileWidget';
 import { useToast } from '../context/ToastContext';
 import { getResidentChatThread, sendResidentChatMessage } from '../services/api';
 
@@ -88,6 +89,8 @@ function PublicLayout() {
   const [residentAttachmentImageFile, setResidentAttachmentImageFile] = useState(null);
   const [isResidentChatLoading, setIsResidentChatLoading] = useState(false);
   const [isResidentChatSending, setIsResidentChatSending] = useState(false);
+  const [residentChatTurnstileToken, setResidentChatTurnstileToken] = useState('');
+  const [residentChatTurnstileResetKey, setResidentChatTurnstileResetKey] = useState(0);
   const [residentChatPosition, setResidentChatPosition] = useState(() => getDefaultChatPosition(DEFAULT_CHAT_SIZE));
   const [residentChatSize, setResidentChatSize] = useState(() => clampChatSize(DEFAULT_CHAT_SIZE));
 
@@ -107,6 +110,8 @@ function PublicLayout() {
     setResidentAttachmentImageFile(null);
     setIsResidentChatLoading(false);
     setIsResidentChatSending(false);
+    setResidentChatTurnstileToken('');
+    setResidentChatTurnstileResetKey((current) => current + 1);
 
     if (closeWidget) {
       setIsResidentChatOpen(false);
@@ -257,12 +262,21 @@ function PublicLayout() {
       return;
     }
 
+    if (isTurnstileConfigured() && !residentChatTurnstileToken) {
+      toast.warning({
+        title: 'Security check required',
+        message: 'Please complete the Cloudflare security check before sending a chat message.',
+      });
+      return;
+    }
+
     try {
       setIsResidentChatSending(true);
       const data = await sendResidentChatMessage({
         residentId: connectedResidentId,
         message: residentChatMessage,
         attachmentImageFile: residentAttachmentImageFile,
+        turnstileToken: residentChatTurnstileToken,
       });
       setResidentChat(data);
       setResidentChatMessage('');
@@ -273,6 +287,8 @@ function PublicLayout() {
         message: error.message,
       });
     } finally {
+      setResidentChatTurnstileToken('');
+      setResidentChatTurnstileResetKey((current) => current + 1);
       setIsResidentChatSending(false);
     }
   }
@@ -343,7 +359,17 @@ function PublicLayout() {
         onAttachmentImageChange={handleResidentAttachmentChange}
         onAttachmentImageClear={clearResidentAttachment}
         onClose={closeResidentChatWidget}
+        onTurnstileError={() => {
+          setResidentChatTurnstileToken('');
+          toast.warning({
+            title: 'Security check unavailable',
+            message: 'Cloudflare verification could not be completed. Please try again.',
+          });
+        }}
+        onTurnstileExpire={() => setResidentChatTurnstileToken('')}
+        onTurnstileVerify={setResidentChatTurnstileToken}
         onToggleMinimized={toggleResidentChatMinimized}
+        turnstileResetKey={residentChatTurnstileResetKey}
       />
       {shouldShowChatLauncher && !isResidentChatOpen ? (
         <button
