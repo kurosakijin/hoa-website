@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getAdminLoginPath } from '../utils/siteHost';
 
 function ProtectedRoute() {
   const { isAuthenticated, ready } = useAuth();
@@ -16,7 +17,7 @@ function ProtectedRoute() {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/hiyas-admin-access" replace state={{ from: location }} />;
+    return <Navigate to={getAdminLoginPath()} replace state={{ from: location }} />;
   }
 
   return <Outlet />;

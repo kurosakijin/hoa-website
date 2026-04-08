@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import Seo from '../components/Seo';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { isAdminHost } from '../utils/siteHost';
 
 function AdminLoginPage() {
   const { login, isAuthenticated } = useAuth();
@@ -11,6 +12,7 @@ function AdminLoginPage() {
   const location = useLocation();
   const [form, setForm] = useState({ username: '', password: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const adminHost = isAdminHost();
 
   if (isAuthenticated) {
     return <Navigate to="/admin/dashboard" replace />;
@@ -51,7 +53,7 @@ function AdminLoginPage() {
       <Seo
         title="Admin Login"
         description="Administrator sign-in page for the Sitio Hiyas Homeowners Association control center."
-        path="/hiyas-admin-access"
+        path={adminHost ? '/' : '/hiyas-admin-access'}
         robots="noindex,nofollow"
       />
       <main className="admin-shell grid min-h-screen place-items-center px-4 py-10">
@@ -60,7 +62,7 @@ function AdminLoginPage() {
             <p className="eyebrow">Admin-only access</p>
             <h1 className="mt-3 text-4xl font-semibold text-white">Sign in to the HOA control center</h1>
             <p className="mt-4 max-w-xl text-base leading-7 text-slate-300">
-              This route is intentionally separated from the public resident homepage. Only administrators managing resident records, transfers, balances, and posted payments should use it.
+              This admin access is intentionally separated from the public resident homepage. Only administrators managing resident records, transfers, balances, and posted payments should use it.
             </p>
 
             <form className="mt-8 space-y-4" onSubmit={handleSubmit} noValidate>

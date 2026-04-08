@@ -8,6 +8,7 @@ import {
 } from '../services/api';
 import Seo from './Seo';
 import ThemeToggleButton from './ThemeToggleButton';
+import { getAdminLoginPath, getPublicSiteUrl } from '../utils/siteHost';
 
 const adminNavItems = [
   { to: '/admin/dashboard', label: 'Dashboard' },
@@ -97,7 +98,7 @@ function AdminLayout() {
     }
 
     logout();
-    navigate('/hiyas-admin-access');
+    navigate(getAdminLoginPath());
   }
 
   return (
@@ -160,9 +161,9 @@ function AdminLayout() {
 
             <div className="flex flex-wrap gap-3">
               <ThemeToggleButton />
-              <NavLink to="/" className="action-button action-button--ghost">
+              <a href={getPublicSiteUrl('/') || '/'} className="action-button action-button--ghost">
                 View public site
-              </NavLink>
+              </a>
               <button type="button" className="action-button action-button--secondary xl:hidden" onClick={handleLogout}>
                 Sign out
               </button>

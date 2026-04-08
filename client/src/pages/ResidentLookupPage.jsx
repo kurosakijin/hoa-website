@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import ImagePreviewModal from '../components/ImagePreviewModal';
 import Seo from '../components/Seo';
 import { useToast } from '../context/ToastContext';
@@ -13,6 +14,21 @@ import {
 
 function getResidentInitials(resident) {
   return [resident.firstName?.[0], resident.lastName?.[0]].filter(Boolean).join('').toUpperCase() || 'SH';
+}
+
+function BackIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
+      <path
+        d="M14.5 5.5 8 12l6.5 6.5"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </svg>
+  );
 }
 
 function ResidentLookupPage() {
@@ -106,6 +122,13 @@ function ResidentLookupPage() {
           <p className="mt-4 max-w-3xl text-base leading-7 text-slate-300">
             Search your resident information by name, block, and lot number, or use the resident ID created by the admin team. Matching records show your contact details, profile photo, assigned properties, and exact payment history.
           </p>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link to="/resident-page" className="action-button action-button--primary gap-2">
+              <BackIcon />
+              Resident Page
+            </Link>
+          </div>
 
           <div className="mt-8 grid gap-6 lg:grid-cols-2">
             <form className="surface-card p-5" onSubmit={handleDetailSearch} noValidate>

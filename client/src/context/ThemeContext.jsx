@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { isAdminHost } from '../utils/siteHost';
 
 const ThemeContext = createContext(null);
 const STORAGE_KEY = 'hoa-theme-preference';
@@ -21,7 +22,7 @@ function getSavedThemeFromCookie() {
 }
 
 function getDefaultThemeForPath(pathname = '/') {
-  return pathname.startsWith('/admin') || pathname.startsWith('/hiyas-admin-access') ? 'dark' : 'light';
+  return isAdminHost() || pathname.startsWith('/admin') || pathname.startsWith('/hiyas-admin-access') ? 'dark' : 'light';
 }
 
 function getInitialTheme() {

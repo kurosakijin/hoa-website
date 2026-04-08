@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ImagePreviewModal from './ImagePreviewModal';
 import Modal from './Modal';
 import { useToast } from '../context/ToastContext';
@@ -15,6 +15,12 @@ import {
 } from '../utils/paymentEvidence';
 
 const PAYMENT_TYPES = ['Monthly Dues', 'Advance Pay'];
+
+function revokeObjectPreview(url) {
+  if (typeof url === 'string' && url.startsWith('blob:')) {
+    URL.revokeObjectURL(url);
+  }
+}
 
 function createPaymentForm(payment) {
   return {
@@ -58,21 +64,30 @@ function PaymentLotModal({
   const [receiptImagePreview, setReceiptImagePreview] = useState('');
   const [receiptPreviewModal, setReceiptPreviewModal] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const receiptInputRef = useRef(null);
   const activeMethod = form.method || editingPayment?.method || 'Cash';
   const activeEvidenceLabel = resolvePaymentEvidenceLabel(activeMethod);
+
+  function resetReceiptSelection(nextPreview = '') {
+    revokeObjectPreview(receiptImagePreview);
+    setReceiptImageFile(null);
+    setReceiptImagePreview(nextPreview);
+
+    if (receiptInputRef.current) {
+      receiptInputRef.current.value = '';
+    }
+  }
 
   useEffect(() => {
     setEditingPayment(null);
     setForm(createPaymentForm());
-    setReceiptImageFile(null);
-    setReceiptImagePreview('');
+    resetReceiptSelection('');
     setReceiptPreviewModal(null);
   }, [detail, isOpen]);
 
   useEffect(() => {
     setForm(createPaymentForm(editingPayment));
-    setReceiptImageFile(null);
-    setReceiptImagePreview(editingPayment?.receiptImageUrl || '');
+    resetReceiptSelection(editingPayment?.receiptImageUrl || '');
   }, [editingPayment]);
 
   function handleReceiptImageChange(event) {
@@ -82,8 +97,30 @@ function PaymentLotModal({
       return;
     }
 
+    revokeObjectPreview(receiptImagePreview);
     setReceiptImageFile(nextFile);
     setReceiptImagePreview(URL.createObjectURL(nextFile));
+  }
+
+  useEffect(() => () => revokeObjectPreview(receiptImagePreview), [receiptImagePreview]);
+
+  function getPaymentRowState(payment) {
+    const isEditingCurrentPayment = editingPayment?.id === payment.id;
+    const rowMethod = isEditingCurrentPayment ? form.method || payment.method : payment.method;
+    const evidenceSource = isEditingCurrentPayment
+      ? {
+          ...payment,
+          method: rowMethod,
+          evidenceLabel: activeEvidenceLabel,
+        }
+      : payment;
+    const evidenceImageUrl = isEditingCurrentPayment && receiptImagePreview ? receiptImagePreview : payment.receiptImageUrl;
+
+    return {
+      rowMethod,
+      evidenceSource,
+      evidenceImageUrl,
+    };
   }
 
   async function handleSubmit(event) {
@@ -125,8 +162,7 @@ function PaymentLotModal({
       });
       setEditingPayment(null);
       setForm(createPaymentForm());
-      setReceiptImageFile(null);
-      setReceiptImagePreview('');
+      resetReceiptSelection('');
     } catch (submitError) {
       toast.error({
         title: editingPayment ? 'Could not update payment' : 'Could not record payment',
@@ -220,8 +256,7 @@ function PaymentLotModal({
                       onClick={() => {
                         setEditingPayment(null);
                         setForm(createPaymentForm());
-                        setReceiptImageFile(null);
-                        setReceiptImagePreview('');
+                        resetReceiptSelection('');
                       }}
                     >
                       Cancel edit
@@ -270,7 +305,7 @@ function PaymentLotModal({
                   </label>
                   <label className="field-shell md:col-span-2">
                     <span>{getPaymentEvidenceFieldLabel(activeMethod)}</span>
-                    <input type="file" accept="image/*" onChange={handleReceiptImageChange} />
+                    <input ref={receiptInputRef} type="file" accept="image/*" onChange={handleReceiptImageChange} />
                   </label>
                   {(receiptImagePreview || editingPayment?.receiptImageUrl) ? (
                     <div className="payment-receipt-preview md:col-span-2">
@@ -341,28 +376,31 @@ function PaymentLotModal({
                     </tr>
                   </thead>
                   <tbody>
-                    {detail.paymentHistory.map((payment) => (
-                      <tr key={payment.id} className="border-t border-white/8 text-slate-300">
+                    {detail.paymentHistory.map((payment) => {
+                      const { rowMethod, evidenceSource, evidenceImageUrl } = getPaymentRowState(payment);
+
+                      return (
+                        <tr key={payment.id} className="border-t border-white/8 text-slate-300">
                         <td className="py-4">{formatDateOnly(payment.paymentDate)}</td>
                         <td className="py-4">{payment.type}</td>
-                        <td className="py-4">{payment.method}</td>
+                        <td className="py-4">{rowMethod}</td>
                         <td className="py-4">{formatCurrency(payment.amount)}</td>
                         <td className="py-4">
-                          {payment.receiptImageUrl ? (
+                          {evidenceImageUrl ? (
                             <button
                               type="button"
                               className="table-action"
                               onClick={() =>
                                 setReceiptPreviewModal({
-                                  title: getPaymentEvidencePreviewTitle(payment, formatDateOnly(payment.paymentDate)),
-                                  imageUrl: payment.receiptImageUrl,
+                                  title: getPaymentEvidencePreviewTitle(evidenceSource, formatDateOnly(payment.paymentDate)),
+                                  imageUrl: evidenceImageUrl,
                                 })
                               }
                             >
-                              {getPaymentEvidenceActionLabel(payment)}
+                              {getPaymentEvidenceActionLabel(evidenceSource)}
                             </button>
                           ) : (
-                            <span className="text-xs text-slate-500">{getPaymentEvidenceEmptyLabel(payment)}</span>
+                            <span className="text-xs text-slate-500">{getPaymentEvidenceEmptyLabel(evidenceSource)}</span>
                           )}
                         </td>
                         <td className="py-4">{payment.notes || 'No notes'}</td>
@@ -376,8 +414,9 @@ function PaymentLotModal({
                             </button>
                           </div>
                         </td>
-                      </tr>
-                    ))}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
