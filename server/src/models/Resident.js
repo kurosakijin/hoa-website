@@ -20,7 +20,7 @@ const residentSchema = new mongoose.Schema(
     firstName: { type: String, required: true, trim: true },
     middleName: { type: String, default: '', trim: true },
     lastName: { type: String, required: true, trim: true },
-    contactNumber: { type: String, required: true, trim: true },
+    contactNumber: { type: String, default: '', trim: true },
     address: { type: String, required: true, trim: true },
     profileImageUrl: { type: String, default: '', trim: true },
     profileImagePublicId: { type: String, default: '', trim: true },

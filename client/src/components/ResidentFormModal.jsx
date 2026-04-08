@@ -126,10 +126,6 @@ function validateResidentForm(form) {
     return 'First name is required.';
   }
 
-  if (!String(form.contactNumber || '').trim()) {
-    return 'Contact number is required.';
-  }
-
   if (!String(form.address || '').trim()) {
     return 'Address is required.';
   }

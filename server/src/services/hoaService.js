@@ -738,8 +738,8 @@ async function listResidents() {
 async function createResident(payload, options = {}) {
   const normalized = normalizeResidentInput(payload);
 
-  if (!normalized.firstName || !normalized.lastName || !normalized.contactNumber || !normalized.address) {
-    throw new Error('Resident name, contact number, and address are required.');
+  if (!normalized.firstName || !normalized.lastName || !normalized.address) {
+    throw new Error('Resident first name, last name, and address are required.');
   }
 
   assertLotFinancialsValid(normalized.lots);
@@ -770,6 +770,10 @@ async function updateResident(residentId, payload, options = {}) {
   }
 
   const normalized = normalizeResidentInput(payload);
+
+  if (!normalized.firstName || !normalized.lastName || !normalized.address) {
+    throw new Error('Resident first name, last name, and address are required.');
+  }
 
   const lockedLotConflict = findLockedLotConflict(resident, normalized.lots);
   if (lockedLotConflict) {

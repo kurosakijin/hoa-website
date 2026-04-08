@@ -38,10 +38,6 @@ function validateTransferForm(form) {
     return 'New resident first name is required.';
   }
 
-  if (!String(form.contactNumber || '').trim()) {
-    return 'Contact number is required.';
-  }
-
   if (!String(form.address || '').trim()) {
     return 'Address is required.';
   }
