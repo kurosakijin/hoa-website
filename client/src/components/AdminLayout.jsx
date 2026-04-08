@@ -18,12 +18,57 @@ const adminNavItems = [
   { to: '/admin/chat', label: 'Resident Chat' },
 ];
 
+function getIsPhoneAdminExperience() {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const isNarrowViewport = window.matchMedia('(max-width: 820px)').matches;
+  const isCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
+  const mobileUserAgent =
+    navigator.userAgentData?.mobile ??
+    /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+  return Boolean(mobileUserAgent || (isNarrowViewport && isCoarsePointer));
+}
+
 function AdminLayout() {
   const { admin, logout, token } = useAuth();
   const navigate = useNavigate();
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
+  const [isPhoneExperience, setIsPhoneExperience] = useState(getIsPhoneAdminExperience);
   const previousUnreadCountRef = useRef(null);
   const notificationPermissionRequestedRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const viewportQuery = window.matchMedia('(max-width: 820px)');
+    const coarsePointerQuery = window.matchMedia('(pointer: coarse)');
+    const updatePhoneExperience = () => {
+      setIsPhoneExperience(getIsPhoneAdminExperience());
+    };
+    const addMediaListener = (query) => {
+      if (typeof query.addEventListener === 'function') {
+        query.addEventListener('change', updatePhoneExperience);
+        return () => query.removeEventListener('change', updatePhoneExperience);
+      }
+
+      query.addListener(updatePhoneExperience);
+      return () => query.removeListener(updatePhoneExperience);
+    };
+
+    updatePhoneExperience();
+    const removeViewportListener = addMediaListener(viewportQuery);
+    const removeCoarsePointerListener = addMediaListener(coarsePointerQuery);
+
+    return () => {
+      removeViewportListener();
+      removeCoarsePointerListener();
+    };
+  }, []);
 
   async function refreshChatUnread({ notify = false } = {}) {
     if (!token) {
@@ -69,6 +114,13 @@ function AdminLayout() {
       return undefined;
     }
 
+    if (isPhoneExperience) {
+      setChatUnreadCount(0);
+      previousUnreadCountRef.current = null;
+      setAdminChatOffline(token).catch(() => {});
+      return undefined;
+    }
+
     if (
       typeof window !== 'undefined' &&
       'Notification' in window &&
@@ -90,7 +142,7 @@ function AdminLayout() {
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [token]);
+  }, [token, isPhoneExperience]);
 
   async function handleLogout() {
     if (token) {
@@ -99,6 +151,45 @@ function AdminLayout() {
 
     logout();
     navigate(getAdminLoginPath());
+  }
+
+  if (isPhoneExperience) {
+    return (
+      <div className="admin-shell min-h-screen text-slate-100">
+        <Seo
+          title="Admin Portal"
+          description="Internal administration area for Sitio Hiyas Homeowners Association."
+          path="/admin"
+          robots="noindex,nofollow"
+        />
+        <div className="admin-mobile-block">
+          <div className="admin-mobile-block__card">
+            <div className="brand-mark brand-mark--dark">
+              <span className="brand-mark__icon" />
+              <span>
+                <strong>Sitio Hiyas HOA</strong>
+                <small>Admin control center</small>
+              </span>
+            </div>
+
+            <p className="eyebrow">Desktop required</p>
+            <h1>This admin UI is not available on phone.</h1>
+            <p className="admin-mobile-block__message">
+              Please use a PC or computer to manage resident records, payments, landing page content, and resident chat.
+            </p>
+
+            <div className="admin-mobile-block__actions">
+              <a href={getPublicSiteUrl('/') || '/'} className="action-button action-button--ghost">
+                View public site
+              </a>
+              <button type="button" className="action-button action-button--secondary" onClick={handleLogout}>
+                Sign out
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

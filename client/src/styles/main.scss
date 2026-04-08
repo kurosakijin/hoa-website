@@ -1111,6 +1111,51 @@ textarea {
   min-width: 0;
 }
 
+.admin-mobile-block {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  margin: 0 auto;
+  max-width: 32rem;
+  min-height: 100vh;
+  padding: 1.5rem;
+}
+
+.admin-mobile-block__card {
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: 1.75rem;
+  box-shadow: var(--color-shadow-strong);
+  padding: 1.5rem;
+  text-align: center;
+  width: 100%;
+
+  .brand-mark {
+    justify-content: center;
+    margin: 0 auto 1.25rem;
+  }
+
+  h1 {
+    color: var(--color-text-primary);
+    font-size: clamp(1.5rem, 1.22rem + 1vw, 2rem);
+    line-height: 1.25;
+    margin: 0.85rem 0 0;
+  }
+}
+
+.admin-mobile-block__message {
+  color: var(--color-text-secondary);
+  font-size: 0.98rem;
+  line-height: 1.75;
+  margin: 1rem 0 0;
+}
+
+.admin-mobile-block__actions {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 1.5rem;
+}
+
 .admin-shell__header-actions {
   align-items: center;
   display: flex;

@@ -44,6 +44,21 @@ function loadTurnstileScript() {
 function TurnstileWidget({ action = 'submit', className = '', onError, onExpire, onVerify, resetKey = 0, size = 'normal' }) {
   const elementRef = useRef(null);
   const widgetIdRef = useRef(null);
+  const onVerifyRef = useRef(onVerify);
+  const onErrorRef = useRef(onError);
+  const onExpireRef = useRef(onExpire);
+
+  useEffect(() => {
+    onVerifyRef.current = onVerify;
+  }, [onVerify]);
+
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
+
+  useEffect(() => {
+    onExpireRef.current = onExpire;
+  }, [onExpire]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -60,9 +75,9 @@ function TurnstileWidget({ action = 'submit', className = '', onError, onExpire,
 
         widgetIdRef.current = turnstile.render(elementRef.current, {
           action,
-          callback: (token) => onVerify?.(token),
-          'error-callback': () => onError?.(),
-          'expired-callback': () => onExpire?.(),
+          callback: (token) => onVerifyRef.current?.(token),
+          'error-callback': () => onErrorRef.current?.(),
+          'expired-callback': () => onExpireRef.current?.(),
           sitekey: TURNSTILE_SITE_KEY,
           size,
           theme: 'auto',
@@ -70,7 +85,7 @@ function TurnstileWidget({ action = 'submit', className = '', onError, onExpire,
       })
       .catch(() => {
         if (!isCancelled) {
-          onError?.();
+          onErrorRef.current?.();
         }
       });
 
@@ -87,7 +102,7 @@ function TurnstileWidget({ action = 'submit', className = '', onError, onExpire,
 
       widgetIdRef.current = null;
     };
-  }, [action, onError, onExpire, onVerify]);
+  }, [action, size]);
 
   useEffect(() => {
     if (window.turnstile && widgetIdRef.current !== null) {
