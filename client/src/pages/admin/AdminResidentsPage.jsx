@@ -182,7 +182,7 @@ function AdminResidentsPage() {
 
           <div className="resident-directory-toolbar">
             <input
-              className="admin-search min-w-[280px]"
+              className="admin-search w-full lg:min-w-[280px]"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search resident, address, block, lot, or ID..."

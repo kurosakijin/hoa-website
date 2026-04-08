@@ -149,8 +149,8 @@ function AdminLayout() {
           </div>
         </aside>
 
-        <div className="flex-1">
-          <header className="surface-card mb-6 flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="admin-shell__main flex-1">
+          <header className="admin-shell__header surface-card mb-4 flex flex-col gap-4 p-5 lg:mb-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="eyebrow">Admin workspace</p>
               <h1 className="text-2xl font-semibold text-white">Welcome back, {admin?.name || 'Administrator'}</h1>
@@ -159,16 +159,39 @@ function AdminLayout() {
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <ThemeToggleButton />
-              <a href={getPublicSiteUrl('/') || '/'} className="action-button action-button--ghost">
+            <div className="admin-shell__header-actions">
+              <ThemeToggleButton compact />
+              <a href={getPublicSiteUrl('/') || '/'} className="action-button action-button--ghost admin-shell__header-link">
                 View public site
               </a>
-              <button type="button" className="action-button action-button--secondary xl:hidden" onClick={handleLogout}>
+              <button
+                type="button"
+                className="action-button action-button--secondary admin-shell__header-link xl:hidden"
+                onClick={handleLogout}
+              >
                 Sign out
               </button>
             </div>
           </header>
+
+          <nav className="admin-shell__mobile-nav xl:hidden" aria-label="Admin sections">
+            <div className="admin-shell__mobile-nav-track">
+              {adminNavItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    `admin-mobile-link ${isActive ? 'admin-mobile-link--active' : ''}`
+                  }
+                >
+                  <span>{item.label}</span>
+                  {item.to === '/admin/chat' && chatUnreadCount ? (
+                    <strong className="admin-mobile-link__badge">{chatUnreadCount}</strong>
+                  ) : null}
+                </NavLink>
+              ))}
+            </div>
+          </nav>
 
           <Outlet />
         </div>

@@ -11,6 +11,7 @@ const {
   sendResidentChatMessage,
 } = require('../services/chatService');
 const { parseRequestPayload } = require('../utils/requestPayload');
+const { verifyTurnstileToken } = require('../utils/turnstile');
 
 const router = express.Router();
 
@@ -51,6 +52,7 @@ router.get('/landing-page-content', async (_request, response, next) => {
 
 router.get('/resident-search', async (request, response, next) => {
   try {
+    await verifyTurnstileToken(request.query.turnstileToken, request.ip);
     const result = await searchResidentInformation(request.query);
 
     if (!result) {

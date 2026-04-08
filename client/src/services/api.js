@@ -127,8 +127,8 @@ export function searchResidentByDetails(params) {
   return request(() => api.get('/public/resident-search', { params }));
 }
 
-export function searchResidentById(residentId) {
-  return request(() => api.get('/public/resident-search', { params: { residentId } }));
+export function searchResidentById(residentId, turnstileToken) {
+  return request(() => api.get('/public/resident-search', { params: { residentId, turnstileToken } }));
 }
 
 export function getPublicOccupancySummary() {

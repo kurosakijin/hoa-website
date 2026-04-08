@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import ImagePreviewModal from '../components/ImagePreviewModal';
 import Seo from '../components/Seo';
+import TurnstileWidget, { isTurnstileConfigured } from '../components/TurnstileWidget';
 import { useToast } from '../context/ToastContext';
 import { searchResidentByDetails, searchResidentById } from '../services/api';
 import { formatCurrency, formatDateOnly } from '../utils/format';
@@ -14,6 +15,14 @@ import {
 
 function getResidentInitials(resident) {
   return [resident.firstName?.[0], resident.lastName?.[0]].filter(Boolean).join('').toUpperCase() || 'SH';
+}
+
+function isValidResidentIdFormat(value) {
+  return /^HOA-[A-F0-9]{6}$/.test(String(value || '').trim().toUpperCase());
+}
+
+function containsNonDigits(value) {
+  return /[^0-9]/.test(String(value || ''));
 }
 
 function BackIcon() {
@@ -43,6 +52,25 @@ function ResidentLookupPage() {
   const [result, setResult] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [receiptPreviewModal, setReceiptPreviewModal] = useState(null);
+  const [detailTurnstileToken, setDetailTurnstileToken] = useState('');
+  const [detailTurnstileResetKey, setDetailTurnstileResetKey] = useState(0);
+  const [idTurnstileToken, setIdTurnstileToken] = useState('');
+  const [idTurnstileResetKey, setIdTurnstileResetKey] = useState(0);
+
+  function updateNumericLookupField(fieldName, nextValue) {
+    if (containsNonDigits(nextValue)) {
+      toast.warning({
+        title: `Invalid ${fieldName}`,
+        message: `Please enter the ${fieldName}.`,
+      });
+      return;
+    }
+
+    setDetailForm((current) => ({
+      ...current,
+      [fieldName === 'block number' ? 'block' : 'lotNumber']: nextValue,
+    }));
+  }
 
   async function handleDetailSearch(event) {
     event.preventDefault();
@@ -55,10 +83,21 @@ function ResidentLookupPage() {
       return;
     }
 
+    if (isTurnstileConfigured() && !detailTurnstileToken) {
+      toast.warning({
+        title: 'Security check required',
+        message: 'Please complete the Cloudflare security check before searching resident details.',
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const data = await searchResidentByDetails(detailForm);
+      const data = await searchResidentByDetails({
+        ...detailForm,
+        turnstileToken: detailTurnstileToken,
+      });
       setResult(data);
     } catch (searchError) {
       setResult(null);
@@ -67,6 +106,8 @@ function ResidentLookupPage() {
         message: searchError.message,
       });
     } finally {
+      setDetailTurnstileToken('');
+      setDetailTurnstileResetKey((current) => current + 1);
       setIsLoading(false);
     }
   }
@@ -82,10 +123,26 @@ function ResidentLookupPage() {
       return;
     }
 
+    if (!isValidResidentIdFormat(residentId)) {
+      toast.warning({
+        title: 'Invalid resident ID format',
+        message: 'Please enter the valid format ID.',
+      });
+      return;
+    }
+
+    if (isTurnstileConfigured() && !idTurnstileToken) {
+      toast.warning({
+        title: 'Security check required',
+        message: 'Please complete the Cloudflare security check before searching by resident ID.',
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const data = await searchResidentById(residentId);
+      const data = await searchResidentById(residentId, idTurnstileToken);
       setResult(data);
     } catch (searchError) {
       setResult(null);
@@ -94,6 +151,8 @@ function ResidentLookupPage() {
         message: searchError.message,
       });
     } finally {
+      setIdTurnstileToken('');
+      setIdTurnstileResetKey((current) => current + 1);
       setIsLoading(false);
     }
   }
@@ -144,16 +203,38 @@ function ResidentLookupPage() {
                 </label>
                 <label className="field-shell">
                   <span>Block</span>
-                  <input value={detailForm.block} onChange={(event) => setDetailForm((current) => ({ ...current, block: event.target.value }))} />
+                  <input
+                    value={detailForm.block}
+                    inputMode="numeric"
+                    onChange={(event) => updateNumericLookupField('block number', event.target.value)}
+                  />
                 </label>
                 <label className="field-shell">
                   <span>Lot number</span>
-                  <input value={detailForm.lotNumber} onChange={(event) => setDetailForm((current) => ({ ...current, lotNumber: event.target.value }))} />
+                  <input
+                    value={detailForm.lotNumber}
+                    inputMode="numeric"
+                    onChange={(event) => updateNumericLookupField('lot number', event.target.value)}
+                  />
                 </label>
               </div>
               <button type="submit" className="action-button action-button--primary mt-4" disabled={isLoading}>
                 {isLoading ? 'Searching...' : 'Search resident details'}
               </button>
+
+              <TurnstileWidget
+                action="resident_lookup_details"
+                resetKey={detailTurnstileResetKey}
+                onVerify={setDetailTurnstileToken}
+                onExpire={() => setDetailTurnstileToken('')}
+                onError={() => {
+                  setDetailTurnstileToken('');
+                  toast.warning({
+                    title: 'Security check unavailable',
+                    message: 'Cloudflare verification could not be completed. Please try again.',
+                  });
+                }}
+              />
             </form>
 
             <form className="surface-card p-5" onSubmit={handleIdSearch} noValidate>
@@ -170,6 +251,20 @@ function ResidentLookupPage() {
               <button type="submit" className="action-button action-button--secondary mt-4" disabled={isLoading}>
                 {isLoading ? 'Searching...' : 'Find by resident ID'}
               </button>
+
+              <TurnstileWidget
+                action="resident_lookup_id"
+                resetKey={idTurnstileResetKey}
+                onVerify={setIdTurnstileToken}
+                onExpire={() => setIdTurnstileToken('')}
+                onError={() => {
+                  setIdTurnstileToken('');
+                  toast.warning({
+                    title: 'Security check unavailable',
+                    message: 'Cloudflare verification could not be completed. Please try again.',
+                  });
+                }}
+              />
             </form>
           </div>
 

@@ -322,9 +322,6 @@ function PaymentLotModal({
                             ? `Selected ${activeEvidenceLabel.toLowerCase()}: ${receiptImageFile.name}`
                             : getPaymentEvidenceCurrentLabel(activeMethod)}
                         </p>
-                        <p className="mt-2 text-sm text-slate-400">
-                          This image will be stored on Cloudinary and can be viewed later from the resident payment history.
-                        </p>
                         <button
                           type="button"
                           className="table-action mt-3"

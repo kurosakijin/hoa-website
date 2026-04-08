@@ -55,7 +55,7 @@ function AdminDashboardPage() {
         <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="eyebrow">Admin preview</p>
-            <h2 className="mt-2 text-3xl font-semibold text-white">Sitio Hiyas command dashboard</h2>
+            <h2 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">Sitio Hiyas command dashboard</h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
               This protected dashboard is where administrators monitor collections, track outstanding balances, and manage resident records.
             </p>
@@ -113,10 +113,10 @@ function AdminDashboardPage() {
 
       <section className="grid gap-6 xl:grid-cols-[1.55fr_0.95fr]">
         <div className="surface-card p-5">
-          <div className="mb-5 flex items-center justify-between">
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="eyebrow">Collections trend</p>
-              <h2 className="mt-2 text-2xl font-semibold text-white">Monthly payment flow</h2>
+              <h2 className="mt-2 text-xl font-semibold text-white sm:text-2xl">Monthly payment flow</h2>
             </div>
             <span className="status-tag status-tag--violet">{summary.monthlyCollections.length} months tracked</span>
           </div>
@@ -150,7 +150,7 @@ function AdminDashboardPage() {
         <div className="surface-card p-5">
           <div className="mb-5">
             <p className="eyebrow">Recent payments</p>
-            <h2 className="mt-2 text-2xl font-semibold text-white">Latest posted activity</h2>
+            <h2 className="mt-2 text-xl font-semibold text-white sm:text-2xl">Latest posted activity</h2>
           </div>
 
           <div className="space-y-3">
@@ -179,7 +179,7 @@ function AdminDashboardPage() {
         <div className="surface-card p-5">
           <div className="mb-5">
             <p className="eyebrow">Highest outstanding lots</p>
-            <h2 className="mt-2 text-2xl font-semibold text-white">Collection follow-up queue</h2>
+            <h2 className="mt-2 text-xl font-semibold text-white sm:text-2xl">Collection follow-up queue</h2>
           </div>
 
           <div className="space-y-3">
@@ -202,7 +202,7 @@ function AdminDashboardPage() {
         <div className="surface-card p-5">
           <div className="mb-5">
             <p className="eyebrow">Balance overview</p>
-            <h2 className="mt-2 text-2xl font-semibold text-white">Billed vs remaining</h2>
+            <h2 className="mt-2 text-xl font-semibold text-white sm:text-2xl">Billed vs remaining</h2>
           </div>
 
           <div className="h-72">

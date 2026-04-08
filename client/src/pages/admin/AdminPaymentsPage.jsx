@@ -116,50 +116,98 @@ function AdminPaymentsPage() {
           </div>
 
           <input
-            className="admin-search min-w-[280px]"
+            className="admin-search w-full lg:min-w-[280px]"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search resident, block, lot, or resident ID..."
           />
         </div>
 
-        <div className="mt-6 overflow-x-auto">
-          <table className="w-full min-w-[980px] text-left text-sm">
-            <thead className="text-xs uppercase tracking-[0.24em] text-slate-500">
-              <tr>
-                <th className="pb-3">Name</th>
-                <th className="pb-3">Block</th>
-                <th className="pb-3">Lot</th>
-                <th className="pb-3">Square meter assigned</th>
-                <th className="pb-3">Remaining balance</th>
-                <th className="pb-3">Total balance</th>
-                <th className="pb-3 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody>
+        {filteredLots.length ? (
+          <>
+            <div className="payment-lot-list md:hidden">
               {filteredLots.map((lot) => (
-                <tr key={`${lot.residentId}-${lot.lotId}`} className="border-t border-white/8 text-slate-300">
-                  <td className="py-4 font-medium text-white">
-                    <div>{lot.residentName}</div>
-                    <div className="text-xs text-slate-500">{lot.residentCode}</div>
-                  </td>
-                  <td className="py-4">{lot.block}</td>
-                  <td className="py-4">{lot.lotNumber}</td>
-                  <td className="py-4">{lot.squareMeters} sqm</td>
-                  <td className="py-4">{formatCurrency(lot.remainingBalance)}</td>
-                  <td className="py-4">{formatCurrency(lot.totalBalance)}</td>
-                  <td className="py-4">
-                    <div className="flex justify-end">
-                      <button type="button" className="action-button action-button--secondary" onClick={() => openLotModal(lot)}>
-                        View
-                      </button>
+                <article key={`${lot.residentId}-${lot.lotId}`} className="payment-lot-card">
+                  <div className="payment-lot-card__header">
+                    <div className="min-w-0">
+                      <p className="payment-lot-card__name">{lot.residentName}</p>
+                      <p className="payment-lot-card__code">{lot.residentCode}</p>
                     </div>
-                  </td>
-                </tr>
+                    <button type="button" className="action-button action-button--secondary" onClick={() => openLotModal(lot)}>
+                      View
+                    </button>
+                  </div>
+
+                  <div className="payment-lot-card__grid">
+                    <div className="payment-lot-card__item">
+                      <span>Block</span>
+                      <strong>{lot.block}</strong>
+                    </div>
+                    <div className="payment-lot-card__item">
+                      <span>Lot</span>
+                      <strong>{lot.lotNumber}</strong>
+                    </div>
+                    <div className="payment-lot-card__item">
+                      <span>Square meter assigned</span>
+                      <strong>{lot.squareMeters} sqm</strong>
+                    </div>
+                    <div className="payment-lot-card__item">
+                      <span>Remaining balance</span>
+                      <strong>{formatCurrency(lot.remainingBalance)}</strong>
+                    </div>
+                    <div className="payment-lot-card__item payment-lot-card__item--wide">
+                      <span>Total balance</span>
+                      <strong>{formatCurrency(lot.totalBalance)}</strong>
+                    </div>
+                  </div>
+                </article>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+
+            <div className="mt-6 hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[980px] text-left text-sm">
+                <thead className="text-xs uppercase tracking-[0.24em] text-slate-500">
+                  <tr>
+                    <th className="pb-3">Name</th>
+                    <th className="pb-3">Block</th>
+                    <th className="pb-3">Lot</th>
+                    <th className="pb-3">Square meter assigned</th>
+                    <th className="pb-3">Remaining balance</th>
+                    <th className="pb-3">Total balance</th>
+                    <th className="pb-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredLots.map((lot) => (
+                    <tr key={`${lot.residentId}-${lot.lotId}`} className="border-t border-white/8 text-slate-300">
+                      <td className="py-4 font-medium text-white">
+                        <div>{lot.residentName}</div>
+                        <div className="text-xs text-slate-500">{lot.residentCode}</div>
+                      </td>
+                      <td className="py-4">{lot.block}</td>
+                      <td className="py-4">{lot.lotNumber}</td>
+                      <td className="py-4">{lot.squareMeters} sqm</td>
+                      <td className="py-4">{formatCurrency(lot.remainingBalance)}</td>
+                      <td className="py-4">{formatCurrency(lot.totalBalance)}</td>
+                      <td className="py-4">
+                        <div className="flex justify-end">
+                          <button type="button" className="action-button action-button--secondary" onClick={() => openLotModal(lot)}>
+                            View
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : (
+          <div className="payment-lot-empty">
+            <p className="text-base font-semibold text-white">No lot balances matched your search.</p>
+            <p className="mt-2 text-sm text-slate-400">Try another resident name, block, lot number, or resident ID.</p>
+          </div>
+        )}
       </section>
 
       <PaymentLotModal
