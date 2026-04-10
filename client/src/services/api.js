@@ -1,11 +1,25 @@
 import axios from 'axios';
+import { isAdminHost } from '../utils/siteHost';
 
-const defaultApiBaseUrl =
-  import.meta.env.VITE_API_URL ||
-  (typeof window !== 'undefined' ? `${window.location.origin}/api` : '/api');
+const DEFAULT_ADMIN_DIRECT_API_URL = 'https://hoa-website-kurosakijins-projects.vercel.app/api';
+
+function resolveApiBaseUrl() {
+  if (typeof window === 'undefined') {
+    return import.meta.env.VITE_API_URL || '/api';
+  }
+
+  if (isAdminHost()) {
+    return (
+      import.meta.env.VITE_ADMIN_API_URL ||
+      DEFAULT_ADMIN_DIRECT_API_URL
+    );
+  }
+
+  return import.meta.env.VITE_API_URL || `${window.location.origin}/api`;
+}
 
 const api = axios.create({
-  baseURL: defaultApiBaseUrl,
+  baseURL: resolveApiBaseUrl(),
 });
 
 function getErrorMessage(error) {
