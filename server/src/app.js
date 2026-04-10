@@ -14,7 +14,38 @@ function createApp() {
   const app = express();
 
   app.set('trust proxy', true);
-  app.use(cors());
+  const allowedOrigins = new Set(
+    [
+      process.env.PUBLIC_SITE_URL,
+      process.env.ADMIN_SITE_URL,
+      process.env.CORS_ALLOWED_ORIGINS,
+      'https://www.saguing-hoa.com',
+      'https://saguing-hoa.com',
+      'https://admin.saguing-hoa.com',
+    ]
+      .flatMap((value) => String(value || '').split(','))
+      .map((value) => value.trim())
+      .filter(Boolean)
+  );
+
+  app.use(
+    cors({
+      origin: (origin, callback) => {
+        if (!origin) {
+          callback(null, true);
+          return;
+        }
+
+        if (allowedOrigins.has(origin)) {
+          callback(null, true);
+          return;
+        }
+
+        callback(new Error('CORS blocked this origin.'));
+      },
+      credentials: true,
+    })
+  );
   app.use(express.json());
   app.use(morgan('dev'));
 
