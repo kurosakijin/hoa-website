@@ -1,16 +1,13 @@
 const express = require('express');
 const { requireAdmin } = require('../middleware/auth');
 const { getAdminConfig, signAdminToken } = require('../utils/auth');
-const { verifyTurnstileToken } = require('../utils/turnstile');
 
 const router = express.Router();
 
 router.post('/login', async (request, response, next) => {
   try {
-    const { username, password, turnstileToken } = request.body || {};
+    const { username, password } = request.body || {};
     const admin = getAdminConfig();
-
-    await verifyTurnstileToken(turnstileToken, request.ip);
 
     if (username !== admin.username || password !== admin.password) {
       return response.status(401).json({ message: 'Incorrect admin credentials.' });

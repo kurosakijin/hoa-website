@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import Seo from '../components/Seo';
-import TurnstileWidget, { isTurnstileConfigured } from '../components/TurnstileWidget';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { isAdminHost } from '../utils/siteHost';
@@ -13,8 +12,6 @@ function AdminLoginPage() {
   const location = useLocation();
   const [form, setForm] = useState({ username: '', password: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState('');
-  const [turnstileResetKey, setTurnstileResetKey] = useState(0);
   const adminHost = isAdminHost();
 
   if (isAuthenticated) {
@@ -32,21 +29,10 @@ function AdminLoginPage() {
       return;
     }
 
-    if (isTurnstileConfigured() && !turnstileToken) {
-      toast.warning({
-        title: 'Security check required',
-        message: 'Please complete the Cloudflare security check before signing in.',
-      });
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
-      await login({
-        ...form,
-        turnstileToken,
-      });
+      await login(form);
       toast.success({
         title: 'Welcome back',
         message: 'The admin dashboard is ready for you.',
@@ -58,8 +44,6 @@ function AdminLoginPage() {
         message: loginError.message,
       });
     } finally {
-      setTurnstileToken('');
-      setTurnstileResetKey((current) => current + 1);
       setIsSubmitting(false);
     }
   }
@@ -90,20 +74,6 @@ function AdminLoginPage() {
                 <span>Password</span>
                 <input type="password" value={form.password} onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))} />
               </label>
-
-              <TurnstileWidget
-                action="admin_login"
-                resetKey={turnstileResetKey}
-                onVerify={setTurnstileToken}
-                onExpire={() => setTurnstileToken('')}
-                onError={() => {
-                  setTurnstileToken('');
-                  toast.warning({
-                    title: 'Security check unavailable',
-                    message: 'Cloudflare verification could not be completed. Please try again.',
-                  });
-                }}
-              />
 
               <button type="submit" className="action-button action-button--primary w-full" disabled={isSubmitting}>
                 {isSubmitting ? 'Signing in...' : 'Enter admin dashboard'}
