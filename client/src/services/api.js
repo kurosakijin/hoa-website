@@ -1,18 +1,7 @@
 import axios from 'axios';
-import { isAdminHost } from '../utils/siteHost';
-
-const ADMIN_INTERNAL_API_PATH = '/__admin_api';
 
 function resolveApiBaseUrl() {
-  if (typeof window === 'undefined') {
-    return import.meta.env.VITE_API_URL || '/api';
-  }
-
-  if (isAdminHost()) {
-    return ADMIN_INTERNAL_API_PATH;
-  }
-
-  return import.meta.env.VITE_API_URL || `${window.location.origin}/api`;
+  return import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? `${window.location.origin}/api` : '/api');
 }
 
 const api = axios.create({
