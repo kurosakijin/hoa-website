@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { isAdminHost } from '../utils/siteHost';
 
-const DEFAULT_ADMIN_DIRECT_API_URL = 'https://hoa-website-kurosakijins-projects.vercel.app/api';
+const ADMIN_INTERNAL_API_PATH = '/__admin_api';
 
 function resolveApiBaseUrl() {
   if (typeof window === 'undefined') {
@@ -9,10 +9,7 @@ function resolveApiBaseUrl() {
   }
 
   if (isAdminHost()) {
-    return (
-      import.meta.env.VITE_ADMIN_API_URL ||
-      DEFAULT_ADMIN_DIRECT_API_URL
-    );
+    return ADMIN_INTERNAL_API_PATH;
   }
 
   return import.meta.env.VITE_API_URL || `${window.location.origin}/api`;
