@@ -10,6 +10,7 @@ export const LOT_CATALOG = {
   '60': Array.from({ length: 20 }, (_, index) => String(index + 1)),
   '61': Array.from({ length: 20 }, (_, index) => String(index + 1)),
   '62': ['2', '4', '6', '8', '10', '12', '14', '16', '18', '20'],
+  '63': Array.from({ length: 20 }, (_, index) => String(index + 1)),
 };
 
 export const BLOCK_OPTIONS = Object.keys(LOT_CATALOG);
