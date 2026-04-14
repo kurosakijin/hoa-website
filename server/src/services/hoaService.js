@@ -4,9 +4,11 @@ const { residents: seedResidents, payments: seedPayments } = require('../data/se
 const { LOT_CATALOG, isAllowedLotSelection } = require('../data/lotCatalog');
 const { generateResidentCode } = require('../utils/ids');
 const {
+  DEFAULT_INTEREST_YEARS,
   DEFAULT_SQUARE_METERS,
   calculateLotPricing,
   derivePricePerSquareMeter,
+  normalizeInterestYears,
   roundCurrency,
 } = require('../utils/lotPricing');
 const { sanitizeContactNumber } = require('../utils/contactNumber');
@@ -54,6 +56,7 @@ function normalizeLotInput(lot) {
     squareMeters: normalizedSquareMeters,
     pricePerSquareMeter: lot.pricePerSquareMeter,
     isSpotCash: lot.isSpotCash,
+    interestYears: lot.interestYears,
   });
 
   return {
@@ -63,6 +66,7 @@ function normalizeLotInput(lot) {
     squareMeters: pricing.squareMeters,
     pricePerSquareMeter: pricing.pricePerSquareMeter,
     isSpotCash: pricing.isSpotCash,
+    interestYears: pricing.interestYears,
     totalBalance: pricing.totalBalance,
     remainingBalance: pricing.totalBalance,
     isActive: lot.isActive !== false,
@@ -119,6 +123,7 @@ function toPlainLot(lot) {
     squareMeters: lot.squareMeters,
     pricePerSquareMeter: lot.pricePerSquareMeter || 0,
     isSpotCash: lot.isSpotCash === true,
+    interestYears: normalizeInterestYears(lot.interestYears),
     totalBalance: lot.totalBalance,
     remainingBalance: lot.remainingBalance,
     isActive: lot.isActive,
@@ -205,6 +210,7 @@ function findLockedLotConflict(existingResident, nextLots) {
       Number(existingLot.squareMeters) !== Number(nextLot.squareMeters) ||
       Number(existingLot.pricePerSquareMeter || 0) !== Number(nextLot.pricePerSquareMeter || 0) ||
       Boolean(existingLot.isSpotCash) !== Boolean(nextLot.isSpotCash) ||
+      normalizeInterestYears(existingLot.interestYears) !== normalizeInterestYears(nextLot.interestYears) ||
       nextLot.isActive === false;
 
     if (lotWasChanged) {
@@ -385,8 +391,10 @@ async function ensureDatabaseSeeded() {
                 totalBalance: normalizeCurrency(legacy.balance),
                 squareMeters: DEFAULT_SQUARE_METERS,
                 isSpotCash: false,
+                interestYears: DEFAULT_INTEREST_YEARS,
               }),
               isSpotCash: false,
+              interestYears: DEFAULT_INTEREST_YEARS,
               totalBalance: normalizeCurrency(legacy.balance),
               remainingBalance: normalizeCurrency(legacy.balance),
               isActive: true,
@@ -495,6 +503,7 @@ async function ensureDatabaseSeeded() {
     for (const lot of resident.lots) {
       const nextSquareMeters = lot.squareMeters > 0 ? lot.squareMeters : DEFAULT_SQUARE_METERS;
       const nextIsSpotCash = lot.isSpotCash === true;
+      const nextInterestYears = normalizeInterestYears(lot.interestYears);
       const nextPricePerSquareMeter =
         lot.pricePerSquareMeter > 0
           ? roundCurrency(lot.pricePerSquareMeter)
@@ -502,11 +511,13 @@ async function ensureDatabaseSeeded() {
               totalBalance: lot.totalBalance,
               squareMeters: nextSquareMeters,
               isSpotCash: nextIsSpotCash,
+              interestYears: nextInterestYears,
             });
       const derivedPricing = calculateLotPricing({
         squareMeters: nextSquareMeters,
         pricePerSquareMeter: nextPricePerSquareMeter,
         isSpotCash: nextIsSpotCash,
+        interestYears: nextInterestYears,
       });
 
       if (lot.squareMeters !== nextSquareMeters) {
@@ -521,6 +532,11 @@ async function ensureDatabaseSeeded() {
 
       if (lot.isSpotCash !== nextIsSpotCash) {
         lot.isSpotCash = nextIsSpotCash;
+        hasPricingUpdates = true;
+      }
+
+      if (normalizeInterestYears(lot.interestYears) !== nextInterestYears) {
+        lot.interestYears = nextInterestYears;
         hasPricingUpdates = true;
       }
 
@@ -810,6 +826,7 @@ async function updateResident(residentId, payload, options = {}) {
         squareMeters: existingLot.squareMeters,
         pricePerSquareMeter: existingLot.pricePerSquareMeter,
         isSpotCash: existingLot.isSpotCash,
+        interestYears: normalizeInterestYears(existingLot.interestYears),
         totalBalance: existingLot.totalBalance,
         remainingBalance: existingLot.remainingBalance,
         isActive: existingLot.isActive,
@@ -823,6 +840,7 @@ async function updateResident(residentId, payload, options = {}) {
       squareMeters: lot.squareMeters,
       pricePerSquareMeter: lot.pricePerSquareMeter,
       isSpotCash: lot.isSpotCash,
+      interestYears: normalizeInterestYears(lot.interestYears),
       totalBalance: lot.totalBalance,
       remainingBalance: lot.totalBalance,
       isActive: lot.isActive,
@@ -913,6 +931,7 @@ async function transferResidentLot(residentId, payload) {
         squareMeters: lot.squareMeters,
         pricePerSquareMeter: lot.pricePerSquareMeter,
         isSpotCash: lot.isSpotCash,
+        interestYears: normalizeInterestYears(lot.interestYears),
         totalBalance: lot.totalBalance,
         remainingBalance: lot.remainingBalance,
         isActive: true,
@@ -998,6 +1017,7 @@ async function listPaymentLots() {
         squareMeters: lot.squareMeters,
         pricePerSquareMeter: lot.pricePerSquareMeter || 0,
         isSpotCash: lot.isSpotCash === true,
+        interestYears: normalizeInterestYears(lot.interestYears),
         remainingBalance: lot.remainingBalance,
         totalBalance: lot.totalBalance,
         lotId: lot._id.toString(),

@@ -7,6 +7,7 @@ const lotSchema = new mongoose.Schema(
     squareMeters: { type: Number, required: true, default: 60, min: 0 },
     pricePerSquareMeter: { type: Number, default: 0, min: 0 },
     isSpotCash: { type: Boolean, default: false },
+    interestYears: { type: Number, required: true, default: 5, min: 1, max: 5 },
     totalBalance: { type: Number, default: 0, min: 0 },
     remainingBalance: { type: Number, default: 0, min: 0 },
     isActive: { type: Boolean, default: true },

@@ -8,8 +8,11 @@ import {
 } from '../data/lotCatalog';
 import {
   calculateRemainingPreview,
+  DEFAULT_INTEREST_YEARS,
   DEFAULT_SQUARE_METERS,
   derivePricePerSquareMeter,
+  INTEREST_YEAR_OPTIONS,
+  normalizeInterestYears,
 } from '../utils/lotPricing';
 import { useToast } from '../context/ToastContext';
 import { sanitizeContactNumber } from '../utils/contactNumber';
@@ -25,6 +28,7 @@ function withCalculatedBalances(lot) {
     squareMeters: lot.squareMeters === '' ? DEFAULT_SQUARE_METERS : lot.squareMeters,
     pricePerSquareMeter: lot.pricePerSquareMeter,
     isSpotCash: lot.isSpotCash,
+    interestYears: lot.interestYears,
     paidAmount: lot.paidAmount,
   });
 
@@ -41,6 +45,7 @@ function createLotState(lot = {}) {
   const remainingBalance = Number(lot.remainingBalance) || 0;
   const paidAmount = Math.max(totalBalance - remainingBalance, 0);
   const isSpotCash = lot.isSpotCash === true;
+  const interestYears = normalizeInterestYears(lot.interestYears);
   const pricePerSquareMeter =
     Number(lot.pricePerSquareMeter) > 0
       ? Number(lot.pricePerSquareMeter)
@@ -48,6 +53,7 @@ function createLotState(lot = {}) {
           totalBalance,
           squareMeters,
           isSpotCash,
+          interestYears,
         });
 
   return withCalculatedBalances({
@@ -57,6 +63,7 @@ function createLotState(lot = {}) {
     squareMeters: String(squareMeters),
     pricePerSquareMeter: pricePerSquareMeter ? String(pricePerSquareMeter) : '',
     isSpotCash,
+    interestYears: String(interestYears),
     totalBalance,
     remainingBalance,
     paidAmount,
@@ -67,6 +74,7 @@ function createLotState(lot = {}) {
 function createEmptyLot() {
   return createLotState({
     squareMeters: DEFAULT_SQUARE_METERS,
+    interestYears: DEFAULT_INTEREST_YEARS,
     pricePerSquareMeter: '',
     isSpotCash: false,
     totalBalance: 0,
@@ -147,6 +155,10 @@ function validateResidentForm(form) {
 
     if (!(Number(lot.pricePerSquareMeter) > 0)) {
       return `Price per sqm must be greater than zero for lot assignment ${index + 1}.`;
+    }
+
+    if (!lot.isSpotCash && !(Number(lot.interestYears) >= 1 && Number(lot.interestYears) <= 5)) {
+      return `Interest years must be between 1 and 5 for lot assignment ${index + 1}.`;
     }
   }
 
@@ -293,6 +305,7 @@ function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit
           squareMeters: Number(lot.squareMeters || DEFAULT_SQUARE_METERS),
           pricePerSquareMeter: Number(lot.pricePerSquareMeter),
           isSpotCash: lot.isSpotCash,
+          interestYears: normalizeInterestYears(lot.interestYears),
           totalBalance: lot.totalBalance,
           remainingBalance: lot.remainingBalance,
           isActive: lot.isActive,
@@ -418,6 +431,7 @@ function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit
               squareMeters: lot.squareMeters === '' ? DEFAULT_SQUARE_METERS : lot.squareMeters,
               pricePerSquareMeter: lot.pricePerSquareMeter,
               isSpotCash: lot.isSpotCash,
+              interestYears: lot.interestYears,
               paidAmount: lot.paidAmount,
             });
             const selectedLotKeys = buildSelectedLotKeys(form.lots, index);
@@ -454,7 +468,7 @@ function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit
                   </p>
                 ) : null}
 
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
                   <label className="field-shell">
                     <span>Block</span>
                     <select value={lot.block} onChange={(event) => updateLot(index, 'block', event.target.value)} disabled={lotLocked}>
@@ -505,6 +519,20 @@ function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit
                       disabled={lotLocked}
                     />
                   </label>
+                  <label className="field-shell">
+                    <span>Interest term</span>
+                    <select
+                      value={lot.interestYears}
+                      onChange={(event) => updateLot(index, 'interestYears', event.target.value)}
+                      disabled={lotLocked || lot.isSpotCash}
+                    >
+                      {INTEREST_YEAR_OPTIONS.map((yearOption) => (
+                        <option key={yearOption} value={yearOption}>
+                          {yearOption} {yearOption === '1' ? 'year' : 'years'}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
 
                 <label className="mt-4 flex items-start gap-3 rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 text-sm text-slate-300">
@@ -518,7 +546,7 @@ function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit
                   <span>
                     <strong className="text-white">Cash</strong>
                     <span className="block text-slate-400">
-                      Checked means the resident pays the lot directly in full. Unchecked applies 6% yearly interest across 5 years.
+                      Checked means the resident pays the lot directly in full. Unchecked applies 6% yearly interest across the selected term.
                     </span>
                   </span>
                 </label>
@@ -535,9 +563,13 @@ function ResidentFormModal({ isOpen, resident, residents = [], onClose, onSubmit
                     <p className="mt-1 text-xs text-slate-400">{lot.isSpotCash ? 'No interest applied on cash.' : 'Yearly interest amount.'}</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
-                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">5 Year Interest</p>
-                    <p className="mt-2 text-lg font-semibold text-white">{formatCurrency(pricing.fiveYearInterest)}</p>
-                    <p className="mt-1 text-xs text-slate-400">Total interest for the 5-year term.</p>
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                      {pricing.interestYears} {pricing.interestYears === 1 ? 'Year' : 'Years'} Interest
+                    </p>
+                    <p className="mt-2 text-lg font-semibold text-white">{formatCurrency(pricing.termInterest)}</p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      {lot.isSpotCash ? 'No term interest applied on cash.' : `Total interest across the selected ${pricing.interestYears}-year term.`}
+                    </p>
                   </div>
                   <div className="rounded-2xl border border-cyan-400/30 bg-cyan-500/10 p-4">
                     <p className="text-xs uppercase tracking-[0.2em] text-cyan-200">Total Payment</p>
